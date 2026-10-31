@@ -3,17 +3,26 @@ project:
   output-dir: ../docs
   render:
     - index.qmd
+  resources:
+    - fonts/*.ttf
+    - fonts/OFL.txt
 
 website:
   title: "Senate 2026 forecast"
   page-footer:
-    center: "Yi Zhi Zhang · [Code and data on GitHub](https://github.com/BolongTang/US-midterms-2026-silicon-forecast-regression)"
+    # TODO: add the third author if there is one
+    center: "Bolong Tang · Yi Zhi (Harry) Zhang · [Code and data on GitHub](https://github.com/harryyz/US-midterms-2026-silicon-forecast)"
 
 format:
   html:
     theme: styles.scss
+    css: fonts/fonts.css
     toc: true
     toc-depth: 2
+    toc-title: "On this page"
+    fig-cap-location: bottom
+    tbl-cap-location: top
+    citations-hover: false
 
 execute:
   echo: false

@@ -1,4 +1,4 @@
-# TITLE
+# Synthetic Voters Give Republicans a 72% Chance of Keeping the Senate in 2026
 
 ## Overview
 
