@@ -3,9 +3,9 @@
 #          data/02-analysis_data. Nothing here calls an LLM; the numbers come from
 #          scripts/03-query_models.py (responses), scripts/04-forecast.py (backtest,
 #          calibration, forecast) and scripts/05-regression.py (regression forecast).
-# Author: AUTHOR
+# Author: Yi Zhi Zhang
 # Date: 31 October 2026
-# Contact: EMAIL
+# Contact: yizhiharry.zhang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: the parquet files from scripts/03, 04 and 05; senate_races.csv
 #
@@ -121,7 +121,9 @@ def load(root: Path = ROOT) -> dict:
         return df.with_columns(model=pl.col("model").replace(MODEL_NAME))
 
     summary = pl.read_parquet(d / "forecast_2026_summary.parquet")
-    summary = summary.rename({c: MODEL_NAME[c] for c in summary.columns if c in MODEL_NAME})
+    summary = summary.rename(
+        {c: MODEL_NAME[c] for c in summary.columns if c in MODEL_NAME}
+    )
     resp = {n: pl.read_parquet(d / f"{n}.parquet") for n in
             ["responses_2024", "responses_2024_forced", "responses_2026", "responses_2026_deepseek",
              "responses_2026_forced"]}  # fmt: skip
@@ -166,9 +168,18 @@ def fig_seats(seats: pl.DataFrame):
     return (
         ggplot(d, aes("rep_seats", "share", fill="side"))
         + geom_col(width=0.8)
-        + geom_vline(xintercept=MAJORITY_REP - 0.5, color=INK, linetype="dashed", size=0.6)
-        + geom_text(aes(x=MAJORITY_REP - 0.3, y=top * 1.04), label="50 seats: control",
-                    ha="left", size=9, family=FONT, color=INK, inherit_aes=False)
+        + geom_vline(
+            xintercept=MAJORITY_REP - 0.5, color=INK, linetype="dashed", size=0.6
+        )
+        + geom_text(
+            aes(x=MAJORITY_REP - 0.3, y=top * 1.04),
+            label="50 seats: control",
+            ha="left",
+            size=9,
+            family=FONT,
+            color=INK,
+            inherit_aes=False,
+        )
         + scale_fill_manual({"Republican control": REP, "Opposition control": OPP})
         + scale_x_continuous(breaks=list(range(40, 62, 2)))
         + scale_y_continuous(labels=pct, expand=(0, 0, 0.08, 0))
@@ -184,13 +195,21 @@ def quantile_dots(draws: pl.DataFrame, n: int = 20) -> pd.DataFrame:
     rows = []
     for state, g in draws.group_by("state"):
         for q in qs:
-            rows.append({"state": state[0], "q": q, "share": float(np.quantile(g["rep_share"], q))})
+            rows.append(
+                {
+                    "state": state[0],
+                    "q": q,
+                    "share": float(np.quantile(g["rep_share"], q)),
+                }
+            )
     return pd.DataFrame(rows)
 
 
 def fig_state_dots(draws: pl.DataFrame, summary: pl.DataFrame):
     d = quantile_dots(draws)
-    d["name"] = pd.Categorical(d["state"].map(STATE_NAMES), categories=state_order(summary), ordered=True)
+    d["name"] = pd.Categorical(
+        d["state"].map(STATE_NAMES), categories=state_order(summary), ordered=True
+    )
     d["winner"] = np.where(d["share"] > 0.5, "Republican wins", "Opposition wins")
     return (
         ggplot(d, aes("share", "name", color="winner"))
@@ -224,8 +243,13 @@ def pipeline_html() -> str:
 
 #### FIG D: 2024 backtest ####
 def fig_backtest(bt: pl.DataFrame, calib: pl.DataFrame):
-    d = bt.with_columns(name=pl.col("state").replace(STATE_NAMES), miss=pl.col("error").abs()).to_pandas()
-    assert d["rep_share"].between(0.10, 0.85).all() and d["actual"].between(0.10, 0.85).all(), "point outside axis"
+    d = bt.with_columns(
+        name=pl.col("state").replace(STATE_NAMES), miss=pl.col("error").abs()
+    ).to_pandas()
+    assert (
+        d["rep_share"].between(0.10, 0.85).all()
+        and d["actual"].between(0.10, 0.85).all()
+    ), "point outside axis"
     worst = d.sort_values("miss", ascending=False).groupby("model").head(3)
     lines = pd.DataFrame([{"model": r["model"], "x": 0.10, "y": r["intercept"] + r["slope"] * 0.10,
                            "xend": 0.85, "yend": r["intercept"] + r["slope"] * 0.85}
@@ -233,13 +257,24 @@ def fig_backtest(bt: pl.DataFrame, calib: pl.DataFrame):
     return (
         ggplot(d, aes("rep_share", "actual"))
         + geom_abline(slope=1, intercept=0, color=GREY, linetype="dashed", size=0.5)
-        + geom_segment(aes(x="x", y="y", xend="xend", yend="yend"), data=lines, color=INK, size=0.8, inherit_aes=False)
+        + geom_segment(
+            aes(x="x", y="y", xend="xend", yend="yend"),
+            data=lines,
+            color=INK,
+            size=0.8,
+            inherit_aes=False,
+        )
         + geom_point(color=GREY, size=2.2, stroke=0)
-        + geom_text(aes(label="name"), data=worst, size=8, family=FONT, color=INK, nudge_y=0.025)
+        + geom_text(
+            aes(label="name"), data=worst, size=8, family=FONT, color=INK, nudge_y=0.025
+        )
         + facet_wrap("model")
         + scale_x_continuous(labels=pct, limits=(0.10, 0.85))
         + scale_y_continuous(labels=pct, limits=(0.10, 0.85))
-        + labs(x="Republican share from the synthetic voters (before calibration)", y="Actual Republican share")
+        + labs(
+            x="Republican share from the synthetic voters (before calibration)",
+            y="Actual Republican share",
+        )
         + theme_news(7.5, 4.0, panel_grid_major_x=element_line(color=GRID, size=0.5))
     )
 
@@ -248,8 +283,12 @@ def fig_backtest(bt: pl.DataFrame, calib: pl.DataFrame):
 def fig_by_party(by_party: pl.DataFrame):
     keep = {"openai/gpt-4o-mini": "GPT-4o mini", "meta-llama/llama-3.3-70b-instruct": "Llama 3.3 70B",
             "party-line baseline": "Party-line baseline"}  # fmt: skip
-    d = by_party.filter(pl.col("model").is_in(list(keep)), pl.col("pid7").is_in(PID7_ORDER)).to_pandas()
-    d["who"] = pd.Categorical(d["model"].map(keep), categories=list(keep.values()), ordered=True)
+    d = by_party.filter(
+        pl.col("model").is_in(list(keep)), pl.col("pid7").is_in(PID7_ORDER)
+    ).to_pandas()
+    d["who"] = pd.Categorical(
+        d["model"].map(keep), categories=list(keep.values()), ordered=True
+    )
     d["group"] = pd.Categorical(d["pid7"].map(lambda p: PID7_LABEL.get(p, p)),
                                 categories=[PID7_LABEL.get(p, p) for p in PID7_ORDER][::-1], ordered=True)  # fmt: skip
     # Group on the x axis and flip, so the dodge separates the markers vertically
@@ -258,12 +297,23 @@ def fig_by_party(by_party: pl.DataFrame):
         ggplot(d, aes("group", "agreement", shape="who", color="who", fill="who"))
         + geom_point(size=3, stroke=0.8, position=position_dodge(width=0.55))
         + coord_flip()
-        + scale_shape_manual({"GPT-4o mini": "o", "Llama 3.3 70B": "o", "Party-line baseline": "D"})
-        + scale_color_manual({"GPT-4o mini": INK, "Llama 3.3 70B": INK, "Party-line baseline": GREY})
-        + scale_fill_manual({"GPT-4o mini": INK, "Llama 3.3 70B": "white", "Party-line baseline": GREY})
+        + scale_shape_manual(
+            {"GPT-4o mini": "o", "Llama 3.3 70B": "o", "Party-line baseline": "D"}
+        )
+        + scale_color_manual(
+            {"GPT-4o mini": INK, "Llama 3.3 70B": INK, "Party-line baseline": GREY}
+        )
+        + scale_fill_manual(
+            {"GPT-4o mini": INK, "Llama 3.3 70B": "white", "Party-line baseline": GREY}
+        )
         + scale_y_continuous(labels=pct, limits=(0.5, 1.0))
         + labs(x="", y="Share who pick the same side as their real 2024 vote")
-        + theme_news(7, 4.2, panel_grid_major_y=element_blank(), panel_grid_major_x=element_line(color=GRID, size=0.5))
+        + theme_news(
+            7,
+            4.2,
+            panel_grid_major_y=element_blank(),
+            panel_grid_major_x=element_line(color=GRID, size=0.5),
+        )
     )
 
 
@@ -273,28 +323,54 @@ def independents_shares(sd: dict) -> pd.DataFrame:
     Opposition = a Democrat or independent actually on that state's ballot.
     Every row is weighted by the respondent's CES survey weight."""
     races = sd["races_2024"].select(
-        "state", has_dem=pl.col("democrat").is_not_null(), has_ind=pl.col("independent").is_not_null()
+        "state",
+        has_dem=pl.col("democrat").is_not_null(),
+        has_ind=pl.col("independent").is_not_null(),
     )
-    p = sd["personas_2024"].filter(pl.col("pid7") == "Independent").select(
-        "persona_id", "state", "voted_sen_party", w=pl.col("weight").fill_null(0)
-    ).join(races, on="state")
+    p = (
+        sd["personas_2024"]
+        .filter(pl.col("pid7") == "Independent")
+        .select(
+            "persona_id", "state", "voted_sen_party", w=pl.col("weight").fill_null(0)
+        )
+        .join(races, on="state")
+    )
 
     def side(label: pl.Expr) -> pl.Expr:
-        opp = ((label == "Democrat") & pl.col("has_dem")) | ((label == "Independent") & pl.col("has_ind"))
-        return pl.when(label == "Republican").then(pl.lit("Republican")).when(opp).then(pl.lit("Opposition")).otherwise(pl.lit("Other"))
+        opp = ((label == "Democrat") & pl.col("has_dem")) | (
+            (label == "Independent") & pl.col("has_ind")
+        )
+        return (
+            pl.when(label == "Republican")
+            .then(pl.lit("Republican"))
+            .when(opp)
+            .then(pl.lit("Opposition"))
+            .otherwise(pl.lit("Other"))
+        )
 
     rows = []
-    for source, df in [("Free answer", sd["resp"]["responses_2024"]), ("Forced answer", sd["resp"]["responses_2024_forced"])]:
-        a = df.join(p, on=["persona_id", "state"]).with_columns(side=side(pl.col("answer")))
+    for source, df in [
+        ("Free answer", sd["resp"]["responses_2024"]),
+        ("Forced answer", sd["resp"]["responses_2024_forced"]),
+    ]:
+        a = df.join(p, on=["persona_id", "state"]).with_columns(
+            side=side(pl.col("answer"))
+        )
         if source == "Forced answer":
             a = a.filter(pl.col("answer").is_not_null())
         g = a.group_by("side").agg(w=pl.col("w").sum())
-        rows += [{"source": source, "side": r["side"], "share": r["w"] / g["w"].sum()} for r in g.iter_rows(named=True)]
-    real = p.with_columns(side=side(pl.col("voted_sen_party").replace({"Democratic": "Democrat"}))).filter(
-        pl.col("voted_sen_party").is_not_null(), pl.col("side") != "Other"
-    )
+        rows += [
+            {"source": source, "side": r["side"], "share": r["w"] / g["w"].sum()}
+            for r in g.iter_rows(named=True)
+        ]
+    real = p.with_columns(
+        side=side(pl.col("voted_sen_party").replace({"Democratic": "Democrat"}))
+    ).filter(pl.col("voted_sen_party").is_not_null(), pl.col("side") != "Other")
     g = real.group_by("side").agg(w=pl.col("w").sum())
-    rows += [{"source": "Real vote", "side": r["side"], "share": r["w"] / g["w"].sum()} for r in g.iter_rows(named=True)]
+    rows += [
+        {"source": "Real vote", "side": r["side"], "share": r["w"] / g["w"].sum()}
+        for r in g.iter_rows(named=True)
+    ]
     out = pd.DataFrame(rows)
     out.attrs["n_real"] = real.height
     out.attrs["n_personas"] = p.height
@@ -303,12 +379,25 @@ def independents_shares(sd: dict) -> pd.DataFrame:
 
 def fig_independents(shares: pd.DataFrame):
     d = shares.copy()
-    d["source"] = pd.Categorical(d["source"], categories=["Real vote", "Forced answer", "Free answer"], ordered=True)
-    d["side"] = pd.Categorical(d["side"], categories=["Other", "Opposition", "Republican"], ordered=True)
+    d["source"] = pd.Categorical(
+        d["source"],
+        categories=["Real vote", "Forced answer", "Free answer"],
+        ordered=True,
+    )
+    d["side"] = pd.Categorical(
+        d["side"], categories=["Other", "Opposition", "Republican"], ordered=True
+    )
     d = d.sort_values(["source", "side"], ascending=[True, False])
     d["end"] = d.groupby("source", observed=True)["share"].cumsum()
     d["mid"] = d["end"] - d["share"] / 2
-    d["label"] = np.where(d["share"] >= 0.08, d["side"].astype(str) + " " + (100 * d["share"]).round().astype(int).astype(str) + "%", "")
+    d["label"] = np.where(
+        d["share"] >= 0.08,
+        d["side"].astype(str)
+        + " "
+        + (100 * d["share"]).round().astype(int).astype(str)
+        + "%",
+        "",
+    )
     return (
         ggplot(d, aes("source", "share", fill="side"))
         + geom_col(width=0.6, position="stack")
@@ -316,8 +405,13 @@ def fig_independents(shares: pd.DataFrame):
         + scale_fill_manual({"Republican": REP, "Opposition": OPP, "Other": GREY})
         + scale_y_continuous(labels=pct, expand=(0, 0))
         + labs(x="", y="Share of answers (weighted)")
-        + theme_news(7, 2.8, legend_position="none", panel_grid_major_y=element_blank(),
-                     panel_grid_major_x=element_line(color=GRID, size=0.5))
+        + theme_news(
+            7,
+            2.8,
+            legend_position="none",
+            panel_grid_major_y=element_blank(),
+            panel_grid_major_x=element_line(color=GRID, size=0.5),
+        )
         + coord_flip()
     )
 
@@ -325,14 +419,30 @@ def fig_independents(shares: pd.DataFrame):
 #### FIG G: silicon sampling versus regression ####
 def compare_with_regression(summary: pl.DataFrame, root: Path = ROOT) -> pd.DataFrame:
     d = root / "data" / "02-analysis_data"
-    sel = pl.read_parquet(d / "model_selection.parquet").filter(pl.col("selected"), pl.col("phase") == "validation").row(0, named=True)
-    reg = pl.read_parquet(d / "regression_forecast_2026.parquet").filter(pl.col("features") == sel["features"], pl.col("train") == "all")
-    reg = reg.select(state="st", regression=pl.col("p_rep") / (pl.col("p_dem") + pl.col("p_rep")))
-    j = summary.select("state", silicon="median", p_rep_win="p_rep_win").join(reg, on="state").to_pandas()
+    sel = (
+        pl.read_parquet(d / "model_selection.parquet")
+        .filter(pl.col("selected"), pl.col("phase") == "validation")
+        .row(0, named=True)
+    )
+    reg = pl.read_parquet(d / "regression_forecast_2026.parquet").filter(
+        pl.col("features") == sel["features"], pl.col("train") == "all"
+    )
+    reg = reg.select(
+        state="st", regression=pl.col("p_rep") / (pl.col("p_dem") + pl.col("p_rep"))
+    )
+    j = (
+        summary.select("state", silicon="median", p_rep_win="p_rep_win")
+        .join(reg, on="state")
+        .to_pandas()
+    )
     j["name"] = j["state"].map(STATE_NAMES)
     j["call"] = np.select(
-        [(j["silicon"] > 0.5) & (j["regression"] > 0.5), (j["silicon"] < 0.5) & (j["regression"] < 0.5)],
-        ["Both: Republican", "Both: opposition"], "Methods disagree",
+        [
+            (j["silicon"] > 0.5) & (j["regression"] > 0.5),
+            (j["silicon"] < 0.5) & (j["regression"] < 0.5),
+        ],
+        ["Both: Republican", "Both: opposition"],
+        "Methods disagree",
     )
     j.attrs["features"] = sel["features"]
     return j
@@ -345,9 +455,25 @@ def fig_vs_regression(cmp: pd.DataFrame):
         + geom_vline(xintercept=0.5, color=GREY, linetype="dashed", size=0.5)
         + geom_hline(yintercept=0.5, color=GREY, linetype="dashed", size=0.5)
         + geom_point(size=2.8, stroke=0.9)
-        + geom_text(aes(label="name"), data=dis, color=INK, size=8.5, family=FONT, ha="left", nudge_x=0.007)
-        + scale_color_manual({"Both: Republican": REP, "Both: opposition": OPP, "Methods disagree": INK})
-        + scale_fill_manual({"Both: Republican": REP, "Both: opposition": OPP, "Methods disagree": "white"})
+        + geom_text(
+            aes(label="name"),
+            data=dis,
+            color=INK,
+            size=8.5,
+            family=FONT,
+            ha="left",
+            nudge_x=0.007,
+        )
+        + scale_color_manual(
+            {"Both: Republican": REP, "Both: opposition": OPP, "Methods disagree": INK}
+        )
+        + scale_fill_manual(
+            {
+                "Both: Republican": REP,
+                "Both: opposition": OPP,
+                "Methods disagree": "white",
+            }
+        )
         + scale_x_continuous(labels=pct)
         + scale_y_continuous(labels=pct)
         + labs(x="Republican share, silicon sampling", y="Republican share, regression")
@@ -357,27 +483,49 @@ def fig_vs_regression(cmp: pd.DataFrame):
 
 #### FIG H: do the models agree? ####
 def fig_models(summary: pl.DataFrame):
-    d = summary.select("state", *MODEL_ORDER).to_pandas().melt(id_vars="state", var_name="model", value_name="share")
-    d["name"] = pd.Categorical(d["state"].map(STATE_NAMES), categories=state_order(summary), ordered=True)
+    d = (
+        summary.select("state", *MODEL_ORDER)
+        .to_pandas()
+        .melt(id_vars="state", var_name="model", value_name="share")
+    )
+    d["name"] = pd.Categorical(
+        d["state"].map(STATE_NAMES), categories=state_order(summary), ordered=True
+    )
     d["model"] = pd.Categorical(d["model"], categories=MODEL_ORDER, ordered=True)
     return (
         ggplot(d, aes("share", "name", shape="model", color="model", fill="model"))
         + geom_vline(xintercept=0.5, color=GREY, linetype="dashed", size=0.5)
         + geom_point(size=2.2, stroke=0.7)
-        + scale_shape_manual({"GPT-4o mini": "o", "Llama 3.3 70B": "s", "DeepSeek V4 Flash": "^"})
-        + scale_color_manual({"GPT-4o mini": INK, "Llama 3.3 70B": GREY, "DeepSeek V4 Flash": INK})
-        + scale_fill_manual({"GPT-4o mini": INK, "Llama 3.3 70B": GREY, "DeepSeek V4 Flash": "white"})
+        + scale_shape_manual(
+            {"GPT-4o mini": "o", "Llama 3.3 70B": "s", "DeepSeek V4 Flash": "^"}
+        )
+        + scale_color_manual(
+            {"GPT-4o mini": INK, "Llama 3.3 70B": GREY, "DeepSeek V4 Flash": INK}
+        )
+        + scale_fill_manual(
+            {"GPT-4o mini": INK, "Llama 3.3 70B": GREY, "DeepSeek V4 Flash": "white"}
+        )
         + scale_x_continuous(labels=pct)
-        + labs(x="Republican share from each model's synthetic voters (before calibration)", y="")
+        + labs(
+            x="Republican share from each model's synthetic voters (before calibration)",
+            y="",
+        )
         + theme_news(7, 9.5, panel_grid_major_y=element_line(color="#F2F2F2", size=0.4))
     )
 
 
 #### Tables (booktabs, styled in styles.scss) ####
 def booktabs(df: pd.DataFrame, numeric: list[str]) -> str:
-    head = "".join(f'<th class="{"num" if c in numeric else ""}">{c}</th>' for c in df.columns)
+    head = "".join(
+        f'<th class="{"num" if c in numeric else ""}">{c}</th>' for c in df.columns
+    )
     body = "".join(
-        "<tr>" + "".join(f'<td class="{"num" if c in numeric else ""}">{v}</td>' for c, v in zip(df.columns, row)) + "</tr>"
+        "<tr>"
+        + "".join(
+            f'<td class="{"num" if c in numeric else ""}">{v}</td>'
+            for c, v in zip(df.columns, row)
+        )
+        + "</tr>"
         for row in df.itertuples(index=False)
     )
     return f'<table class="booktabs"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
@@ -392,15 +540,28 @@ RUN_LABEL = {
 }
 
 
+def run_window(df: pl.DataFrame) -> str:
+    """When a run happened, from the stored call timestamps, in Toronto time."""
+    times = (
+        df["queried_at"]
+        .str.to_datetime(time_zone="UTC")
+        .dt.convert_time_zone("America/Toronto")
+    )
+    first, last = times.min(), times.max()
+    return f"{first:%b} {first.day}, {first:%H:%M}\u2013{last:%H:%M}"
+
+
 def cost_table(resp: dict) -> pd.DataFrame:
-    rows = [{"Run": RUN_LABEL[n], "Models": df["model"].n_unique(), "replies": df.height, "cost": df["cost_usd"].sum()}
+    rows = [{"Run": RUN_LABEL[n], "When": run_window(df), "Models": str(df["model"].n_unique()),
+             "replies": df.height, "cost": df["cost_usd"].sum()}
             for n, df in resp.items()]  # fmt: skip
+    rows.append({"Run": "Total", "When": "", "Models": "",
+                 "replies": sum(r["replies"] for r in rows), "cost": sum(r["cost"] for r in rows)})  # fmt: skip
     out = pd.DataFrame(rows)
-    out.loc[len(out)] = {"Run": "Total", "Models": "", "replies": out["replies"].sum(), "cost": out["cost"].sum()}
     out["Replies"] = out["replies"].map("{:,.0f}".format)
     out["Cost (US$)"] = out["cost"].map("{:,.2f}".format)
     out.attrs["total_cost"] = float(out["cost"].iloc[-1])
-    return out[["Run", "Models", "Replies", "Cost (US$)"]]
+    return out[["Run", "When", "Models", "Replies", "Cost (US$)"]]
 
 
 def share_text(p: float) -> str:
@@ -436,7 +597,8 @@ def accuracy_table(bt: pl.DataFrame, root: Path = ROOT) -> pd.DataFrame:
                      "right": int(g["winner_right"].sum()), "n": g.height})  # fmt: skip
     sel = (
         pl.read_parquet(root / "data" / "02-analysis_data" / "model_selection.parquet")
-        .filter(pl.col("selected"), pl.col("phase") == "holdout").row(0, named=True)
+        .filter(pl.col("selected"), pl.col("phase") == "holdout")
+        .row(0, named=True)
     )
     rows.append({"Method": "Regression (2024 held out)", "mae": sel["official_mae_dem2p"],
                  "right": round(sel["official_winner_acc"] * sel["n"]), "n": sel["n"]})  # fmt: skip

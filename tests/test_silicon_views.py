@@ -2,9 +2,9 @@
 # Purpose: Test the figures and tables on the website: the stored results are read
 #          correctly, every race is covered, the numbers shown match the data, and
 #          the page follows the design grammar (one page, party colours only).
-# Author: AUTHOR
+# Author: Yi Zhi Zhang
 # Date: 31 October 2026
-# Contact: EMAIL
+# Contact: yizhiharry.zhang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: the parquet files in data/02-analysis_data (tests skip without them)
 #
@@ -22,9 +22,14 @@ NEEDED = ["forecast_2026_summary", "forecast_2026_draws", "forecast_2026_seats",
           "backtest_2024_by_party", "calibration_2024", "personas_2024", "responses_2024",
           "responses_2024_forced", "responses_2026", "responses_2026_deepseek", "responses_2026_forced",
           "model_selection", "regression_forecast_2026"]  # fmt: skip
-pytestmark = pytest.mark.skipif(not all((DATA / f"{n}.parquet").exists() for n in NEEDED), reason="result files absent")
+pytestmark = pytest.mark.skipif(
+    not all((DATA / f"{n}.parquet").exists() for n in NEEDED),
+    reason="result files absent",
+)
 
-spec = importlib.util.spec_from_file_location("si", ROOT / "scripts" / "08-silicon_views.py")
+spec = importlib.util.spec_from_file_location(
+    "si", ROOT / "scripts" / "08-silicon_views.py"
+)
 si = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(si)
 
@@ -45,7 +50,9 @@ def test_every_2026_race_has_a_forecast(sd):
 
 def test_control_probability_matches_the_seat_draws(sd):
     c = si.control_stats(sd["seats"])
-    assert c["p_rep_control"] == pytest.approx(float((sd["seats"]["rep_seats"] >= si.MAJORITY_REP).mean()))
+    assert c["p_rep_control"] == pytest.approx(
+        float((sd["seats"]["rep_seats"] >= si.MAJORITY_REP).mean())
+    )
     assert c["lo"] <= c["median"] <= c["hi"]
 
 
@@ -68,7 +75,11 @@ def test_independent_shares_sum_to_one_for_each_source(sd):
 def test_regression_comparison_covers_every_race(sd):
     c = si.compare_with_regression(sd["summary"], ROOT)
     assert len(c) == 35 and c["regression"].between(0, 1).all()
-    assert set(c["call"]) <= {"Both: Republican", "Both: opposition", "Methods disagree"}
+    assert set(c["call"]) <= {
+        "Both: Republican",
+        "Both: opposition",
+        "Methods disagree",
+    }
 
 
 #### Tables ####
@@ -83,7 +94,11 @@ def test_forecast_table_never_claims_certainty(sd):
     t = si.forecast_table(sd["summary"], sd["races_2026"])
     assert len(t) == 35
     assert not t["P(Republican wins)"].isin(["0%", "100%"]).any()
-    assert si.share_text(0.999) == ">99%" and si.share_text(0.001) == "<1%" and si.share_text(0.5) == "50%"
+    assert (
+        si.share_text(0.999) == ">99%"
+        and si.share_text(0.001) == "<1%"
+        and si.share_text(0.5) == "50%"
+    )
 
 
 def test_accuracy_table_has_both_methods(sd):
@@ -119,7 +134,18 @@ def test_only_the_agreed_colours_are_used():
 
 def test_page_is_one_document_with_all_sections():
     text = (ROOT / "paper" / "index.qmd").read_text()
-    for anchor in ["{#forecast}", "{#method}", "{#backtest}", "{#independents}", "{#second-opinions}", "{#limits}", "{#appendix}"]:
+    for anchor in [
+        "{#forecast}",
+        "{#method}",
+        "{#backtest}",
+        "{#independents}",
+        "{#second-opinions}",
+        "{#limits}",
+        "{#appendix}",
+    ]:
         assert anchor in text
     cfg = (ROOT / "paper" / "_quarto.yml").read_text()
-    assert "navbar" not in cfg and "github.com/harryyz/US-midterms-2026-silicon-forecast" in cfg
+    assert (
+        "navbar" not in cfg
+        and "github.com/harryyz/US-midterms-2026-silicon-forecast" in cfg
+    )

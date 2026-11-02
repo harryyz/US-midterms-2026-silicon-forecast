@@ -31,7 +31,15 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 DATAVERSE = "https://dataverse.harvard.edu"
 CES_DOI = "doi:10.7910/DVN/II2DB6"
-YEARS = [2012, 2014, 2016, 2018, 2020, 2022, 2024]  # 2012-2020 feed the regression only (2012 only as lagged features)
+YEARS = [
+    2012,
+    2014,
+    2016,
+    2018,
+    2020,
+    2022,
+    2024,
+]  # 2012-2020 feed the regression only (2012 only as lagged features)
 
 # Columns we keep. 2024 gives personas and the backtest answer key
 # (voted_sen_party); 2022 gives validated midterm turnout (vv_turnout_gvm).

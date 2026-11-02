@@ -75,7 +75,9 @@ from sklearn.linear_model import RidgeCV
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-warnings.filterwarnings("ignore", message="Sortedness")  # join_asof with `by`; inputs are sorted
+warnings.filterwarnings(
+    "ignore", message="Sortedness"
+)  # join_asof with `by`; inputs are sorted
 ROOT = Path(".")
 
 CLASSES = ["dem", "rep", "und"]  # und = Not Sure, No One, third party
@@ -95,7 +97,10 @@ PRIOR_FEATURES = ["prev_president", "prev_senate_f", "has_prev_senate"]
 TARGET_YEAR = 2026
 FEATURE_YEAR = 2024  # CES / ACS year carried forward to 2026
 LAG = TARGET_YEAR - FEATURE_YEAR  # features lag the target by two years
-TIMINGS = {"lagged": LAG, "contemporaneous": 0}  # contemporaneous = leaky, for comparison
+TIMINGS = {
+    "lagged": LAG,
+    "contemporaneous": 0,
+}  # contemporaneous = leaky, for comparison
 ALPHAS = np.logspace(-2, 3, 20)
 LOSO = "leave-one-state-out (same-cycle info)"
 FORWARD = "forward-chaining"
@@ -134,7 +139,11 @@ def train_sets(years: list[int]) -> dict[str, list[int]]:
     }
     for label, ys in combos.items():
         ys = [y for y in ys if y in years]
-        if len(ys) > 1 and ys not in sets.values() and (label != "2014+2016+2018" or len(ys) == 3):
+        if (
+            len(ys) > 1
+            and ys not in sets.values()
+            and (label != "2014+2016+2018" or len(ys) == 3)
+        ):
             sets[label] = ys
     return sets
 
@@ -152,7 +161,9 @@ def ces_features(ces: pl.DataFrame, year: int) -> pl.DataFrame:
         ces_white=wmean((pl.col("race") == "White").cast(pl.Float64)),
         ces_black=wmean((pl.col("race") == "Black").cast(pl.Float64)),
         ces_hispanic=wmean((pl.col("race") == "Hispanic").cast(pl.Float64)),
-        ces_college=wmean(pl.col("educ").is_in(["4-Year", "Post-Grad"]).cast(pl.Float64)),
+        ces_college=wmean(
+            pl.col("educ").is_in(["4-Year", "Post-Grad"]).cast(pl.Float64)
+        ),
         ces_age=wmean(pl.col("age").cast(pl.Float64)),
         ces_rep=wmean((pl.col("pid3") == "Republican").cast(pl.Float64)),
         ces_dem=wmean((pl.col("pid3") == "Democrat").cast(pl.Float64)),
@@ -163,7 +174,9 @@ def ces_features(ces: pl.DataFrame, year: int) -> pl.DataFrame:
         aggs["ces_rep7"] = wmean(pl.col("pid7").is_in(R7).cast(pl.Float64))
     return (
         ces.filter(pl.col("year") == year, pl.col("weight").is_not_null())
-        .group_by("st").agg(**aggs).with_columns(year=pl.lit(year))
+        .group_by("st")
+        .agg(**aggs)
+        .with_columns(year=pl.lit(year))
     )
 
 
@@ -207,7 +220,9 @@ def load_official(path: Path) -> pl.DataFrame | None:
     return None if out is None else out.rename({"dem2p": "official_dem2p"})
 
 
-def add_acs(table: pl.DataFrame, acs: pl.DataFrame | None, acs_year_for) -> pl.DataFrame:
+def add_acs(
+    table: pl.DataFrame, acs: pl.DataFrame | None, acs_year_for
+) -> pl.DataFrame:
     if acs is None:
         return table
     acs = acs.rename({"acs_year": "_acs_year"})
@@ -218,15 +233,23 @@ def add_acs(table: pl.DataFrame, acs: pl.DataFrame | None, acs_year_for) -> pl.D
     )
 
 
-def add_prior(table: pl.DataFrame, results: pl.DataFrame | None, name: str) -> pl.DataFrame:
+def add_prior(
+    table: pl.DataFrame, results: pl.DataFrame | None, name: str
+) -> pl.DataFrame:
     """Attach each state's most recent result from a year STRICTLY BEFORE the row's year."""
     if results is None:
         return table.with_columns(pl.lit(None, dtype=pl.Float64).alias(name))
-    r = results.select("st", pl.col("year").alias(f"{name}_year"), pl.col("dem2p").alias(name)).sort(f"{name}_year")
+    r = results.select(
+        "st", pl.col("year").alias(f"{name}_year"), pl.col("dem2p").alias(name)
+    ).sort(f"{name}_year")
     left = table.with_columns(_y=(pl.col("year") - 1).cast(pl.Int64)).sort("_y")
-    with warnings.catch_warnings():  # polars cannot verify sortedness with `by`; both sides are sorted
+    with (
+        warnings.catch_warnings()
+    ):  # polars cannot verify sortedness with `by`; both sides are sorted
         warnings.simplefilter("ignore")
-        out = left.join_asof(r, left_on="_y", right_on=f"{name}_year", by="st", strategy="backward")
+        out = left.join_asof(
+            r, left_on="_y", right_on=f"{name}_year", by="st", strategy="backward"
+        )
     return out.drop("_y", f"{name}_year")
 
 
@@ -237,19 +260,27 @@ def add_prior_features(table: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def build_training_table(ces, acs=None, official=None, president=None, lag: int = LAG) -> pl.DataFrame:
+def build_training_table(
+    ces, acs=None, official=None, president=None, lag: int = LAG
+) -> pl.DataFrame:
     """One row per state-race. Features come from the cycle `lag` years before the
     target, so lag=2 mimics forecasting 2026 from 2024 and lag=0 is the leaky,
     same-year design. Cycles whose feature year is not in the data are dropped."""
     have = set(ces["year"].unique().to_list())
-    years = sorted(ces.filter(pl.col("intent_sen").is_not_null())["year"].unique().to_list())
+    years = sorted(
+        ces.filter(pl.col("intent_sen").is_not_null())["year"].unique().to_list()
+    )
     parts = []
     for y in years:
         if y - lag not in have:
             continue
-        feats = ces_features(ces, y - lag).with_columns(feature_year=pl.lit(y - lag), year=pl.lit(y))
+        feats = ces_features(ces, y - lag).with_columns(
+            feature_year=pl.lit(y - lag), year=pl.lit(y)
+        )
         parts.append(feats.join(ces_targets(ces, y), on=["st", "year"]))
-    table = pl.concat(parts, how="diagonal_relaxed").with_columns(pl.col("year").cast(pl.Int64))
+    table = pl.concat(parts, how="diagonal_relaxed").with_columns(
+        pl.col("year").cast(pl.Int64)
+    )
     table = add_acs(table, acs, lambda y: y - lag)
     if official is not None:
         table = table.join(official, on=["st", "year"], how="left")
@@ -263,8 +294,12 @@ def load_prior(official: pl.DataFrame | None, col: str) -> pl.DataFrame | None:
 
 
 def build_target_table(ces, acs=None, official=None, president=None) -> pl.DataFrame:
-    table = ces_features(ces, FEATURE_YEAR).filter(pl.col("st").is_in(SENATE_STATES_2026))
-    table = table.with_columns(feature_year=pl.lit(FEATURE_YEAR), year=pl.lit(TARGET_YEAR).cast(pl.Int64))
+    table = ces_features(ces, FEATURE_YEAR).filter(
+        pl.col("st").is_in(SENATE_STATES_2026)
+    )
+    table = table.with_columns(
+        feature_year=pl.lit(FEATURE_YEAR), year=pl.lit(TARGET_YEAR).cast(pl.Int64)
+    )
     table = add_acs(table, acs, lambda y: pl.lit(FEATURE_YEAR))
     table = add_prior(table, load_prior(official, "official_dem2p"), "prev_senate")
     table = add_prior_features(add_prior(table, president, "prev_president"))
@@ -283,14 +318,20 @@ def from_alr(z: np.ndarray) -> np.ndarray:
     return e / e.sum(axis=1, keepdims=True)
 
 
-def fit_predict(train: pl.DataFrame, test: pl.DataFrame, features: list[str]) -> np.ndarray:
+def fit_predict(
+    train: pl.DataFrame, test: pl.DataFrame, features: list[str]
+) -> np.ndarray:
     """Ridge regression on log-ratios, penalty chosen by leave-one-out CV on `train` only."""
     model = make_pipeline(StandardScaler(), RidgeCV(alphas=ALPHAS))
-    model.fit(train.select(features).to_numpy(), to_alr(train.select(CLASSES).to_numpy()))
+    model.fit(
+        train.select(features).to_numpy(), to_alr(train.select(CLASSES).to_numpy())
+    )
     return from_alr(model.predict(test.select(features).to_numpy()))
 
 
-def fit_predict_direct(train: pl.DataFrame, test: pl.DataFrame, features: list[str]) -> np.ndarray:
+def fit_predict_direct(
+    train: pl.DataFrame, test: pl.DataFrame, features: list[str]
+) -> np.ndarray:
     """DIRECT two-party model: ridge on the logit of the certified Democratic share of the
     two-party vote (not the survey's three-way split). Returned as (n, 3) = [dem2p, 1 - dem2p, 0]
     so that score() and the cross-validation helpers work unchanged. Rows without a
@@ -320,13 +361,21 @@ def leave_one_state_out(table: pl.DataFrame, features: list[str], fit=None):
     return pred, base
 
 
-def forward_chaining(table: pl.DataFrame, features: list[str], years: list[int], min_states: int = 10, fit=None):
+def forward_chaining(
+    table: pl.DataFrame,
+    features: list[str],
+    years: list[int],
+    min_states: int = 10,
+    fit=None,
+):
     """Train only on EARLIER cycles of `years`, predict the next one. A single-cycle
     set predicts every later cycle in the table. Returns (test rows, predictions,
     fold baselines) pooled over test cycles, or None."""
     years = sorted(years)
     if len(years) == 1:
-        tests = [(y, years) for y in sorted(table["year"].unique().to_list()) if y > years[0]]
+        tests = [
+            (y, years) for y in sorted(table["year"].unique().to_list()) if y > years[0]
+        ]
     else:
         tests = [(y, [t for t in years if t < y]) for y in years[1:]]
     held, preds, bases = [], [], []
@@ -355,7 +404,9 @@ def score(test: pl.DataFrame, pred: np.ndarray, baseline: np.ndarray) -> dict:
         "mae_rep": 100 * np.abs(pred[:, 1] - true[:, 1]).mean(),
         "mae_und": 100 * np.abs(pred[:, 2] - true[:, 2]).mean(),
         "baseline_mae_dem": 100 * np.abs(base[:, 0] - true[:, 0]).mean(),
-        "winner_acc_ces": float(((pred[:, 0] > pred[:, 1]) == (true[:, 0] > true[:, 1])).mean()),
+        "winner_acc_ces": float(
+            ((pred[:, 0] > pred[:, 1]) == (true[:, 0] > true[:, 1])).mean()
+        ),
         "official_mae_dem2p": None,
         "official_winner_acc": None,
     }
@@ -365,11 +416,15 @@ def score(test: pl.DataFrame, pred: np.ndarray, baseline: np.ndarray) -> dict:
         if ok.any():
             two_party = pred[:, 0] / (pred[:, 0] + pred[:, 1])
             out["official_mae_dem2p"] = 100 * np.abs(two_party[ok] - off[ok]).mean()
-            out["official_winner_acc"] = float(((two_party[ok] > 0.5) == (off[ok] > 0.5)).mean())
+            out["official_winner_acc"] = float(
+                ((two_party[ok] > 0.5) == (off[ok] > 0.5)).mean()
+            )
     return out
 
 
-def evaluate(tables: dict, feature_sets: dict[str, list[str]], sets: dict) -> pl.DataFrame:
+def evaluate(
+    tables: dict, feature_sets: dict[str, list[str]], sets: dict
+) -> pl.DataFrame:
     """`tables` maps a timing name ('lagged', 'contemporaneous') to a training table."""
     rows = []
     for timing, table in tables.items():
@@ -387,7 +442,9 @@ def evaluate(tables: dict, feature_sets: dict[str, list[str]], sets: dict) -> pl
     return pl.DataFrame(rows)
 
 
-def forecast(table: pl.DataFrame, target: pl.DataFrame, feature_sets, sets: dict) -> pl.DataFrame:
+def forecast(
+    table: pl.DataFrame, target: pl.DataFrame, feature_sets, sets: dict
+) -> pl.DataFrame:
     """2026 forecast from models trained on the LAGGED table, as the target features are."""
     parts = []
     for fs_name, features in feature_sets.items():
@@ -417,10 +474,18 @@ def forecast(table: pl.DataFrame, target: pl.DataFrame, feature_sets, sets: dict
     )  # fmt: skip
 
 
-SURVEY_ONLY = ["mae_dem", "mae_rep", "mae_und", "baseline_mae_dem", "winner_acc_ces"]  # meaningless for the direct model
+SURVEY_ONLY = [
+    "mae_dem",
+    "mae_rep",
+    "mae_und",
+    "baseline_mae_dem",
+    "winner_acc_ces",
+]  # meaningless for the direct model
 
 
-def evaluate_direct(tables: dict, feature_sets: dict[str, list[str]], sets: dict) -> pl.DataFrame:
+def evaluate_direct(
+    tables: dict, feature_sets: dict[str, list[str]], sets: dict
+) -> pl.DataFrame:
     """Same schemes as evaluate(), for the direct two-party model; only the certified-result
     metrics apply, and only races with a certified result can train or be scored."""
     rows = []
@@ -434,12 +499,20 @@ def evaluate_direct(tables: dict, feature_sets: dict[str, list[str]], sets: dict
                 base = {"timing": timing, "train": label, "features": fs_name}
                 pred, bl = leave_one_state_out(train, features, fit=fit_predict_direct)
                 rows.append({**base, "scheme": LOSO, **score(train, pred, bl)})
-                if (fc := forward_chaining(complete, features, years, fit=fit_predict_direct)) is not None:
+                if (
+                    fc := forward_chaining(
+                        complete, features, years, fit=fit_predict_direct
+                    )
+                ) is not None:
                     rows.append({**base, "scheme": FORWARD, **score(*fc)})
-    return pl.DataFrame(rows).with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in SURVEY_ONLY])
+    return pl.DataFrame(rows).with_columns(
+        [pl.lit(None, dtype=pl.Float64).alias(c) for c in SURVEY_ONLY]
+    )
 
 
-def forecast_direct(table: pl.DataFrame, target: pl.DataFrame, feature_sets, sets: dict) -> pl.DataFrame:
+def forecast_direct(
+    table: pl.DataFrame, target: pl.DataFrame, feature_sets, sets: dict
+) -> pl.DataFrame:
     """2026 two-party forecast from the direct model, trained on the LAGGED table."""
     parts = []
     for fs_name, features in feature_sets.items():
@@ -450,10 +523,18 @@ def forecast_direct(table: pl.DataFrame, target: pl.DataFrame, feature_sets, set
             if train["st"].n_unique() < 10:
                 continue
             p = fit_predict_direct(train, tgt, features)[:, 0]
-            parts.append(tgt.select("st").with_columns(train=pl.lit(label), features=pl.lit(fs_name), dem2p=pl.Series(p)))
+            parts.append(
+                tgt.select("st").with_columns(
+                    train=pl.lit(label), features=pl.lit(fs_name), dem2p=pl.Series(p)
+                )
+            )
     return (
         pl.concat(parts)
-        .with_columns(winner=pl.when(pl.col("dem2p") > 0.5).then(pl.lit("Democratic")).otherwise(pl.lit("Republican")))
+        .with_columns(
+            winner=pl.when(pl.col("dem2p") > 0.5)
+            .then(pl.lit("Democratic"))
+            .otherwise(pl.lit("Republican"))
+        )
         .sort("st", "features", "train")
     )
 
@@ -468,17 +549,31 @@ def forecast_direct(table: pl.DataFrame, target: pl.DataFrame, feature_sets, set
 #   6. mean share: every state gets the average two-party share of earlier races
 # All use only information from before the target election.
 BASELINES = [
-    "party ID (pid3)", "party ID + leaners (pid7)", "last Senate result",
-    "last presidential result", "majority class", "mean share",
+    "party ID (pid3)",
+    "party ID + leaners (pid7)",
+    "last Senate result",
+    "last presidential result",
+    "majority class",
+    "mean share",
 ]
 
 
 def baseline_dem2p(name: str, test: pl.DataFrame, history: pl.DataFrame) -> np.ndarray:
     """Predicted Democratic two-party share (NaN where the baseline is undefined).
     `history` holds the earlier cycles' rows, with their certified shares."""
+
     def ratio(d, r):
-        return (test[d] / (test[d] + test[r])).to_numpy().astype(float) if d in test.columns else np.full(test.height, np.nan)
-    hist = history["official_dem2p"].drop_nulls().to_numpy() if "official_dem2p" in history.columns else np.array([])
+        return (
+            (test[d] / (test[d] + test[r])).to_numpy().astype(float)
+            if d in test.columns
+            else np.full(test.height, np.nan)
+        )
+
+    hist = (
+        history["official_dem2p"].drop_nulls().to_numpy()
+        if "official_dem2p" in history.columns
+        else np.array([])
+    )
     if name == "party ID (pid3)":
         return ratio("ces_dem", "ces_rep")
     if name == "party ID + leaners (pid7)":
@@ -487,8 +582,13 @@ def baseline_dem2p(name: str, test: pl.DataFrame, history: pl.DataFrame) -> np.n
         return test["prev_senate"].to_numpy().astype(float)
     if name == "last presidential result":
         return test["prev_president"].to_numpy().astype(float)
-    if name == "majority class":  # winner only; 0.75 / 0.25 are placeholders, not shares
-        return np.full(test.height, np.nan if hist.size == 0 else (0.75 if (hist > 0.5).mean() > 0.5 else 0.25))
+    if (
+        name == "majority class"
+    ):  # winner only; 0.75 / 0.25 are placeholders, not shares
+        return np.full(
+            test.height,
+            np.nan if hist.size == 0 else (0.75 if (hist > 0.5).mean() > 0.5 else 0.25),
+        )
     if name == "mean share":
         return np.full(test.height, np.nan if hist.size == 0 else hist.mean())
     raise ValueError(name)
@@ -501,8 +601,15 @@ def compare_by_year(tables: dict, feature_sets: dict[str, list[str]]) -> pl.Data
     for timing, table in tables.items():
         years = sorted(table["year"].unique().to_list())
         for y in years[1:]:
-            train_all, test = table.filter(pl.col("year") < y), table.filter(pl.col("year") == y)
-            off = test["official_dem2p"].to_numpy().astype(float) if "official_dem2p" in test.columns else np.full(test.height, np.nan)
+            train_all, test = (
+                table.filter(pl.col("year") < y),
+                table.filter(pl.col("year") == y),
+            )
+            off = (
+                test["official_dem2p"].to_numpy().astype(float)
+                if "official_dem2p" in test.columns
+                else np.full(test.height, np.nan)
+            )
             ces_dem2p = (test["dem"] / (test["dem"] + test["rep"])).to_numpy()
             sts = test["st"].to_list()
 
@@ -514,31 +621,61 @@ def compare_by_year(tables: dict, feature_sets: dict[str, list[str]]) -> pl.Data
                 )  # fmt: skip
 
             for fs_name, features in feature_sets.items():
-                comp_train, comp_test = train_all.drop_nulls(features), test.drop_nulls(features)
+                comp_train, comp_test = (
+                    train_all.drop_nulls(features),
+                    test.drop_nulls(features),
+                )
                 if comp_train["st"].n_unique() >= 10 and comp_test.height:
                     p = fit_predict(comp_train, comp_test, features)
                     full = np.full(test.height, np.nan)
-                    full[np.isin(test["st"].to_numpy(), comp_test["st"].to_numpy())] = p[:, 0] / (p[:, 0] + p[:, 1])
+                    full[np.isin(test["st"].to_numpy(), comp_test["st"].to_numpy())] = (
+                        p[:, 0] / (p[:, 0] + p[:, 1])
+                    )
                     record(f"ridge, all earlier cycles ({fs_name})", full)
                 comp_train = train_all.drop_nulls(features + ["official_dem2p"])
-                if "official_dem2p" in train_all.columns and comp_train["st"].n_unique() >= 10 and comp_test.height:
+                if (
+                    "official_dem2p" in train_all.columns
+                    and comp_train["st"].n_unique() >= 10
+                    and comp_test.height
+                ):
                     p = fit_predict_direct(comp_train, comp_test, features)[:, 0]
                     full = np.full(test.height, np.nan)
                     full[np.isin(test["st"].to_numpy(), comp_test["st"].to_numpy())] = p
-                    record(f"ridge direct two-party, all earlier cycles ({fs_name})", full)
+                    record(
+                        f"ridge direct two-party, all earlier cycles ({fs_name})", full
+                    )
             for name in BASELINES:
-                record(f"baseline: {name}", baseline_dem2p(name, test, train_all), has_share=name != "majority class")
-    return pl.DataFrame(rows, schema_overrides={"pred_dem2p": pl.Float64, "official_dem2p": pl.Float64})
+                record(
+                    f"baseline: {name}",
+                    baseline_dem2p(name, test, train_all),
+                    has_share=name != "majority class",
+                )
+    return pl.DataFrame(
+        rows, schema_overrides={"pred_dem2p": pl.Float64, "official_dem2p": pl.Float64}
+    )
 
 
-def summarise_comparison(cmp: pl.DataFrame, timing: str = "lagged", by_year: bool = False, common: bool = True) -> pl.DataFrame:
+def summarise_comparison(
+    cmp: pl.DataFrame,
+    timing: str = "lagged",
+    by_year: bool = False,
+    common: bool = True,
+) -> pl.DataFrame:
     """Winner accuracy and error per method. With common=True every method is scored on
     exactly the same state-years (those where ALL methods make a prediction and a
     certified result exists), so a baseline that is undefined for some states cannot
     look better or worse just because it saw different rows."""
-    d = cmp.filter(pl.col("timing") == timing, pl.col("pred_dem2p").is_not_null(), pl.col("official_dem2p").is_not_null())
+    d = cmp.filter(
+        pl.col("timing") == timing,
+        pl.col("pred_dem2p").is_not_null(),
+        pl.col("official_dem2p").is_not_null(),
+    )
     if common:
-        keys = d.group_by("st", "test_year").agg(k=pl.col("method").n_unique()).filter(pl.col("k") == d["method"].n_unique())
+        keys = (
+            d.group_by("st", "test_year")
+            .agg(k=pl.col("method").n_unique())
+            .filter(pl.col("k") == d["method"].n_unique())
+        )
         d = d.join(keys.select("st", "test_year"), on=["st", "test_year"])
     group = ["method", "test_year"] if by_year else ["method"]
     return (
@@ -561,11 +698,17 @@ def forecast_baselines(target: pl.DataFrame, table: pl.DataFrame) -> pl.DataFram
                          .when(pl.Series(d) > 0.5).then(pl.lit("Democratic")).otherwise(pl.lit("Republican")),
             )
         )  # fmt: skip
-    return pl.concat(parts).with_columns(pl.col("dem2p").fill_nan(None)).sort("st", "baseline")
+    return (
+        pl.concat(parts)
+        .with_columns(pl.col("dem2p").fill_nan(None))
+        .sort("st", "baseline")
+    )
 
 
 #### Midterm-only models ####
-def compare_midterm(table: pl.DataFrame, feature_sets: dict[str, list[str]], min_states: int = 10) -> pl.DataFrame:
+def compare_midterm(
+    table: pl.DataFrame, feature_sets: dict[str, list[str]], min_states: int = 10
+) -> pl.DataFrame:
     """Models fit ONLY on earlier midterm cycles versus models fit on ALL earlier cycles,
     each predicting the same later midterm cycles (2018 from 2014; 2022 from 2014+2018).
     The midterm flag is constant in the midterm-only fit, so it carries no weight there."""
@@ -577,14 +720,32 @@ def compare_midterm(table: pl.DataFrame, feature_sets: dict[str, list[str]], min
         for model in ("midterm-only", "all cycles"):
             held, preds, bases, per_year = [], [], [], {}
             for y in mids[1:]:
-                earlier = [m for m in mids if m < y] if model == "midterm-only" else [t for t in years if t < y]
-                train, test = complete.filter(pl.col("year").is_in(earlier)), complete.filter(pl.col("year") == y)
+                earlier = (
+                    [m for m in mids if m < y]
+                    if model == "midterm-only"
+                    else [t for t in years if t < y]
+                )
+                train, test = (
+                    complete.filter(pl.col("year").is_in(earlier)),
+                    complete.filter(pl.col("year") == y),
+                )
                 if train["st"].n_unique() < min_states or test.height == 0:
                     continue
-                p, b = fit_predict(train, test, features), mean_shares(train, test.height)
+                p, b = (
+                    fit_predict(train, test, features),
+                    mean_shares(train, test.height),
+                )
                 per_year[y] = (test, p, b, earlier)
             for y, (test, p, b, earlier) in per_year.items():
-                rows.append({"features": fs_name, "model": model, "test_year": str(y), "train_years": ",".join(map(str, earlier)), **score(test, p, b)})
+                rows.append(
+                    {
+                        "features": fs_name,
+                        "model": model,
+                        "test_year": str(y),
+                        "train_years": ",".join(map(str, earlier)),
+                        **score(test, p, b),
+                    }
+                )
             if len(per_year) > 1:
                 t = pl.concat([v[0] for v in per_year.values()])
                 rows.append({"features": fs_name, "model": model, "test_year": "pooled", "train_years": "earlier",
@@ -601,10 +762,14 @@ def compare_midterm(table: pl.DataFrame, feature_sets: dict[str, list[str]], min
 # holdout: the most recent cycle. The holdout is reported for every candidate for
 # transparency, but never used to choose.
 WINDOWS = {"all": None, "last 2": 2, "last 1": 1}
-HEADLINE_WINDOW = "all"  # project decision: the headline trains on every cycle (all six)
+HEADLINE_WINDOW = (
+    "all"  # project decision: the headline trains on every cycle (all six)
+)
 
 
-def select_model(table: pl.DataFrame, feature_sets: dict[str, list[str]], min_states: int = 10):
+def select_model(
+    table: pl.DataFrame, feature_sets: dict[str, list[str]], min_states: int = 10
+):
     """Returns (table of validation/holdout scores, (feature set, window) selected)."""
     years = sorted(table["year"].unique().to_list())
     holdout = years[-1]
@@ -613,11 +778,16 @@ def select_model(table: pl.DataFrame, feature_sets: dict[str, list[str]], min_st
     for fs_name, features in feature_sets.items():
         complete = table.drop_nulls(features)
         for window, k in WINDOWS.items():
-            for phase, test_years in (("validation", validation), ("holdout", [holdout])):
+            for phase, test_years in (
+                ("validation", validation),
+                ("holdout", [holdout]),
+            ):
                 held, preds, bases = [], [], []
                 for y in test_years:
                     earlier = [t for t in years if t < y]
-                    train = complete.filter(pl.col("year").is_in(earlier if k is None else earlier[-k:]))
+                    train = complete.filter(
+                        pl.col("year").is_in(earlier if k is None else earlier[-k:])
+                    )
                     test = complete.filter(pl.col("year") == y)
                     if train["st"].n_unique() < min_states or test.height == 0:
                         continue
@@ -630,9 +800,18 @@ def select_model(table: pl.DataFrame, feature_sets: dict[str, list[str]], min_st
                                  "test_years": ",".join(map(str, test_years)), **sc})  # fmt: skip
     sel = pl.DataFrame(rows)
     sel = sel.with_columns(eligible=pl.col("window") == HEADLINE_WINDOW)
-    val = sel.filter(pl.col("phase") == "validation", pl.col("eligible"), pl.col("official_mae_dem2p").is_not_null())
-    best = val.sort("official_mae_dem2p", pl.col("official_winner_acc"), descending=[False, True]).row(0, named=True)
-    sel = sel.with_columns(selected=(pl.col("features") == best["features"]) & (pl.col("window") == best["window"]))
+    val = sel.filter(
+        pl.col("phase") == "validation",
+        pl.col("eligible"),
+        pl.col("official_mae_dem2p").is_not_null(),
+    )
+    best = val.sort(
+        "official_mae_dem2p", pl.col("official_winner_acc"), descending=[False, True]
+    ).row(0, named=True)
+    sel = sel.with_columns(
+        selected=(pl.col("features") == best["features"])
+        & (pl.col("window") == best["window"])
+    )
     return sel, (best["features"], best["window"])
 
 
@@ -656,14 +835,22 @@ def run(source: str, write: bool = True) -> dict:
         load_script("00b-simulate_regression_inputs.py").simulate(p["out"])
     if write:
         p["out"].mkdir(parents=True, exist_ok=True)
-    ces = pl.concat([pl.read_parquet(f) for f in p["ces"] if f.exists()], how="diagonal_relaxed")
+    ces = pl.concat(
+        [pl.read_parquet(f) for f in p["ces"] if f.exists()], how="diagonal_relaxed"
+    )
     acs = load_acs(p["acs"])
     official = load_official(p["results"])
     president = load_results(p["president"])
     print(f"Source: {source} | CES years: {sorted(ces['year'].unique().to_list())}")
-    print(f"ACS features: {'yes' if acs is not None else 'NO (run 01b-download_acs.py)'}")
-    print(f"Certified Senate results: {'yes' if official is not None else 'NO (senate_results.csv missing)'}")
-    print(f"Presidential results: {'yes' if president is not None else 'NO (run 01d-download_president.py)'}")
+    print(
+        f"ACS features: {'yes' if acs is not None else 'NO (run 01b-download_acs.py)'}"
+    )
+    print(
+        f"Certified Senate results: {'yes' if official is not None else 'NO (senate_results.csv missing)'}"
+    )
+    print(
+        f"Presidential results: {'yes' if president is not None else 'NO (run 01d-download_president.py)'}"
+    )
 
     feature_sets = {"ces": CES_FEATURES + ["midterm"]}
     if acs is not None:
@@ -675,7 +862,9 @@ def run(source: str, write: bool = True) -> dict:
     lagged = build_training_table(ces, acs, official, president, lag=LAG)
     years = sorted(lagged["year"].unique().to_list())
     tables = {"lagged": lagged}
-    tables["contemporaneous"] = build_training_table(ces, acs, official, president, lag=0).filter(pl.col("year").is_in(years))
+    tables["contemporaneous"] = build_training_table(
+        ces, acs, official, president, lag=0
+    ).filter(pl.col("year").is_in(years))
     target = build_target_table(ces, acs, official, president)
     sets = train_sets(years)
 
@@ -712,10 +901,25 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", choices=["real", "simulated"], default=None)
     args = ap.parse_args()
-    source = args.source or ("real" if paths("real")["ces"][-1].exists() else "simulated")
+    source = args.source or (
+        "real" if paths("real")["ces"][-1].exists() else "simulated"
+    )
     out = run(source)
     with pl.Config(tbl_rows=80, tbl_cols=20, fmt_float="mixed", fmt_str_lengths=40):
-        m = out["metrics"].filter(pl.col("timing") == "lagged", pl.col("train") == "all", pl.col("scheme") == FORWARD)
-        print(m.select("features", "train", "scheme", "n", pl.col("official_mae_dem2p").round(1), pl.col("official_winner_acc").round(2)))
+        m = out["metrics"].filter(
+            pl.col("timing") == "lagged",
+            pl.col("train") == "all",
+            pl.col("scheme") == FORWARD,
+        )
+        print(
+            m.select(
+                "features",
+                "train",
+                "scheme",
+                "n",
+                pl.col("official_mae_dem2p").round(1),
+                pl.col("official_winner_acc").round(2),
+            )
+        )
         c = summarise_comparison(out["comparison"]).sort("winner_acc", descending=True)
         print(c)

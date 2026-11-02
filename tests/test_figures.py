@@ -25,7 +25,9 @@ def load_module(name: str, file: str):
 @pytest.fixture(scope="module")
 def results(tmp_path_factory):
     root = tmp_path_factory.mktemp("proj")
-    load_module("sim", "00b-simulate_regression_inputs.py").simulate(root / "data" / "00-simulated_data")
+    load_module("sim", "00b-simulate_regression_inputs.py").simulate(
+        root / "data" / "00-simulated_data"
+    )
     figs = load_module("figs", "06-make_figures.py")
     return figs, figs.load("simulated", root)
 

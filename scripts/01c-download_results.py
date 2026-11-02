@@ -49,12 +49,18 @@ def code_party(raw: pl.DataFrame, caucus: dict = CAUCUS_PARTY) -> pl.DataFrame:
     """party_simplified, with caucusing independents recoded to their caucus party."""
     expr = pl.col("party_simplified")
     for (st, name), party in caucus.items():
-        hit = (pl.col("state_po") == st) & pl.col("candidate").str.to_uppercase().str.contains(name) & (pl.col("party_detailed") == "INDEPENDENT")
+        hit = (
+            (pl.col("state_po") == st)
+            & pl.col("candidate").str.to_uppercase().str.contains(name)
+            & (pl.col("party_detailed") == "INDEPENDENT")
+        )
         expr = pl.when(hit).then(pl.lit(party)).otherwise(expr)
     return raw.with_columns(party_coded=expr)
 
 
-def build_results(raw: pl.DataFrame, years: list[int] = YEARS, caucus: dict = CAUCUS_PARTY) -> pl.DataFrame:
+def build_results(
+    raw: pl.DataFrame, years: list[int] = YEARS, caucus: dict = CAUCUS_PARTY
+) -> pl.DataFrame:
     races = (
         code_party(raw, caucus)
         .filter(pl.col("year").is_in(years), pl.col("stage").str.to_lowercase() == "gen")
@@ -67,8 +73,15 @@ def build_results(raw: pl.DataFrame, years: list[int] = YEARS, caucus: dict = CA
         .filter(pl.col("dem_votes") > 0, pl.col("rep_votes") > 0)
     )  # fmt: skip
     return (
-        races.group_by("year", "state_po")  # pool a state's qualifying races, special or regular
-        .agg(pl.col("dem_votes").sum(), pl.col("rep_votes").sum(), pl.col("other_votes").sum(), n_races=pl.len())
+        races.group_by(
+            "year", "state_po"
+        )  # pool a state's qualifying races, special or regular
+        .agg(
+            pl.col("dem_votes").sum(),
+            pl.col("rep_votes").sum(),
+            pl.col("other_votes").sum(),
+            n_races=pl.len(),
+        )
         .rename({"state_po": "st"})
         .cast({"dem_votes": pl.Int64, "rep_votes": pl.Int64, "other_votes": pl.Int64})
         .sort("year", "st")
@@ -78,7 +91,9 @@ def build_results(raw: pl.DataFrame, years: list[int] = YEARS, caucus: dict = CA
 def download(path: Path) -> pl.DataFrame:
     if not path.exists():
         url = f"https://dataverse.harvard.edu/api/access/datafile/{FILE_ID}"
-        r = httpx.get(url, params={"format": "original"}, timeout=120, follow_redirects=True)
+        r = httpx.get(
+            url, params={"format": "original"}, timeout=120, follow_redirects=True
+        )
         r.raise_for_status()
         path.write_bytes(r.content)
     return pl.read_csv(path, infer_schema_length=10000)
@@ -89,5 +104,9 @@ if __name__ == "__main__":
     raw = download(RAW_DIR / "1976-2024-senate-state.csv")
     out = build_results(raw)
     out.write_csv(RAW_DIR / "senate_results.csv")
-    print(out.group_by("year").agg(races=pl.len(), pooled=(pl.col("n_races") > 1).sum()).sort("year"))
+    print(
+        out.group_by("year")
+        .agg(races=pl.len(), pooled=(pl.col("n_races") > 1).sum())
+        .sort("year")
+    )
     print(f"Saved {out.height} state-races to {RAW_DIR / 'senate_results.csv'}")

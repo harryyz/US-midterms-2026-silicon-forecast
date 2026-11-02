@@ -28,10 +28,9 @@
 import io
 import re
 import time
-from pathlib import Path
-
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 import polars as pl
 from PIL import Image
@@ -51,8 +50,8 @@ THUMB = 160
 def clean(text: str) -> str:
     """Wikitext -> plain text: drop references, templates and wiki links."""
     text = re.sub(r"<ref[^>/]*/>", "", text)
-    text = re.sub(r"<ref[^>]*>.*?</ref>", "", text, flags=re.S)
-    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    text = re.sub(r"<ref[^>]*>.*?</ref>", "", text, flags=re.DOTALL)
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
     text = re.sub(r"\{\{[^{}]*\}\}", "", text)
     text = re.sub(r"\[\[[^\]|]*\|([^\]]*)\]\]", r"\1", text)
     text = re.sub(r"\[\[([^\]]*)\]\]", r"\1", text)
@@ -61,11 +60,17 @@ def clean(text: str) -> str:
 
 def party_of(label: str) -> str:
     label = label.lower()
-    return "Democratic" if ("democrat" in label or label.strip() == "dfl") else "Republican" if "republican" in label else "Other"
+    return (
+        "Democratic"
+        if ("democrat" in label or label.strip() == "dfl")
+        else "Republican"
+        if "republican" in label
+        else "Other"
+    )
 
 
 def infobox_field(box: str, key: str) -> str:
-    m = re.search(rf"^\|\s*{key}\s*=(.*)$", box, flags=re.M)
+    m = re.search(rf"^\|\s*{key}\s*=(.*)$", box, flags=re.MULTILINE)
     return clean(m.group(1)) if m else ""
 
 
@@ -79,7 +84,9 @@ def parse_infobox(wikitext: str, state: str, race: str) -> list[dict]:
     out = []
     for n in range(1, 6):
         name = infobox_field(box, f"nominee{n}") or infobox_field(box, f"candidate{n}")
-        name = re.sub(r"\s*\([^)]*\)", "", name).strip()  # "Troy Jackson (replacing ...)" -> "Troy Jackson"
+        name = re.sub(
+            r"\s*\([^)]*\)", "", name
+        ).strip()  # "Troy Jackson (replacing ...)" -> "Troy Jackson"
         if not name:
             continue
         out.append({"state": state, "race": race, "party": party_of(infobox_field(box, f"party{n}")), "name": name,
@@ -96,8 +103,13 @@ def same_person(a: str, b: str) -> bool:
 def race_pages() -> list[tuple[str, str, str]]:
     """(state name, race type, article title) for the 35 races: 33 regular and the FL and OH specials."""
     regular = [n for n, a in STATE_ABBR.items() if a in REGULAR_2026]
-    pages = [(n, "regular", f"2026 United States Senate election in {n}") for n in regular]
-    return pages + [(n, "special", f"2026 United States Senate special election in {n}") for n in ("Florida", "Ohio")]
+    pages = [
+        (n, "regular", f"2026 United States Senate election in {n}") for n in regular
+    ]
+    return pages + [
+        (n, "special", f"2026 United States Senate special election in {n}")
+        for n in ("Florida", "Ohio")
+    ]
 
 
 REGULAR_2026 = {
@@ -133,10 +145,19 @@ def match_legislator(name: str, state: str, leg: pl.DataFrame) -> dict | None:
     if len(parts) < 2:
         return None
     last = parts[-1] if parts[-1] not in {"jr", "sr", "ii", "iii"} else parts[-2]
-    same_last = [r for r in leg.filter(pl.col("state") == state).iter_rows(named=True) if norm(r["last_name"]).split()[-1] == last]
+    same_last = [
+        r
+        for r in leg.filter(pl.col("state") == state).iter_rows(named=True)
+        if norm(r["last_name"]).split()[-1] == last
+    ]
     for r in same_last:
         first = norm(r["first_name"]).split()[0]
-        if first == parts[0] or norm(r.get("nickname") or "x") == parts[0] or first.startswith(parts[0]) or parts[0].startswith(first):
+        if (
+            first == parts[0]
+            or norm(r.get("nickname") or "x") == parts[0]
+            or first.startswith(parts[0])
+            or parts[0].startswith(first)
+        ):
             return r
     if len(same_last) == 1 and norm(same_last[0]["first_name"])[:1] == parts[0][:1]:
         return same_last[0]
@@ -169,7 +190,9 @@ def get(url: str, tries: int = 5) -> tuple[bytes, str]:
     Wikimedia also rate limits shared addresses (HTTP 429), so back off and retry."""
     for i in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+            with urllib.request.urlopen(
+                urllib.request.Request(url, headers=UA), timeout=60
+            ) as r:
                 return r.read(), r.headers.get("content-type", "")
         except urllib.error.HTTPError as e:
             if e.code not in (429, 503) or i == tries - 1:
@@ -184,20 +207,63 @@ def fetch_text(url: str) -> str:
 
 if __name__ == "__main__":
     RAW_DIR.mkdir(parents=True, exist_ok=True)
-    leg = pl.concat([pl.read_csv(io.StringIO(fetch_text(u)), infer_schema_length=0).select("last_name", "first_name", "nickname", "gender", "bioguide_id", "state") for u in LEGISLATORS]).unique("bioguide_id")
+    leg = pl.concat(
+        [
+            pl.read_csv(io.StringIO(fetch_text(u)), infer_schema_length=0).select(
+                "last_name", "first_name", "nickname", "gender", "bioguide_id", "state"
+            )
+            for u in LEGISLATORS
+        ]
+    ).unique("bioguide_id")
     cands = []
     for state, race, title in race_pages():
-        cands += parse_infobox(fetch_text("https://en.wikipedia.org/w/index.php?title=" + title.replace(" ", "_") + "&action=raw"), state, race)
+        cands += parse_infobox(
+            fetch_text(
+                "https://en.wikipedia.org/w/index.php?title="
+                + title.replace(" ", "_")
+                + "&action=raw"
+            ),
+            state,
+            race,
+        )
         time.sleep(3)  # be gentle: Wikimedia rate limits shared addresses
     rows = []
     for r in cands:
-        m = match_legislator(r["name"], STATE_ABBR[r["state"]], leg) if r["party"] != "Other" else None
+        m = (
+            match_legislator(r["name"], STATE_ABBR[r["state"]], leg)
+            if r["party"] != "Other"
+            else None
+        )
         bio = m["bioguide_id"] if m else None
         rows.append({**r, "st": STATE_ABBR[r["state"]], "bioguide_id": bio, "gender": m["gender"] if m else None,
                      "photo_file": fetch_photo(bio) if bio else None})  # fmt: skip
-    out = pl.DataFrame(rows).select("st", "state", "race", "party", "name", "is_incumbent", "bioguide_id", "gender", "photo_file").sort("st", "race", "party", "name")
+    out = (
+        pl.DataFrame(rows)
+        .select(
+            "st",
+            "state",
+            "race",
+            "party",
+            "name",
+            "is_incumbent",
+            "bioguide_id",
+            "gender",
+            "photo_file",
+        )
+        .sort("st", "race", "party", "name")
+    )
     out.write_csv(RAW_DIR / "candidates_2026.csv")
     major = out.filter(pl.col("party").is_in(["Democratic", "Republican"]))
-    print(f"{out.height} candidates in {out['st'].n_unique()} states; {out['photo_file'].is_not_null().sum()} with official portraits")
-    counts = major.group_by("st", "party").len().pivot(on="party", index="st", values="len").fill_null(0)
-    print("races without exactly one nominee per major party:", counts.filter((pl.col("Democratic") != 1) | (pl.col("Republican") != 1)).rows())
+    print(
+        f"{out.height} candidates in {out['st'].n_unique()} states; {out['photo_file'].is_not_null().sum()} with official portraits"
+    )
+    counts = (
+        major.group_by("st", "party")
+        .len()
+        .pivot(on="party", index="st", values="len")
+        .fill_null(0)
+    )
+    print(
+        "races without exactly one nominee per major party:",
+        counts.filter((pl.col("Democratic") != 1) | (pl.col("Republican") != 1)).rows(),
+    )
