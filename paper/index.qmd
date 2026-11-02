@@ -46,18 +46,52 @@ bt_stats = sd["bt"].group_by("model").agg(
 )
 calib = {r["model"]: r for r in sd["calib"].iter_rows(named=True)}
 
+# Seat-chart numbers for the text (Figure 1)
+import re
+
+import numpy as np
+
+rep_seats = seats["rep_seats"]
+
+
+def pct(x, digits=0):
+    return f"{100 * x:.{digits}f}%"
+
+
+pct_dem = pct((rep_seats < si.MAJORITY_REP).mean())  # Democrats control
+pct_tie = pct((rep_seats == 50).mean(), 1)  # exact 50-50 tie
+pct_51 = pct((rep_seats == 51).mean(), 1)
+pct_52 = pct((rep_seats == 52).mean(), 1)
+pct_53 = pct((rep_seats == 53).mean(), 1)
+pct_outright = pct((rep_seats >= 51).mean())  # control without the tie-break
+pct_hold = pct((rep_seats >= 53).mean())  # hold or gain (53 today)
+pct_gain = pct((rep_seats >= 54).mean())  # gain seats
+pct_tails = pct(((rep_seats < 44) | (rep_seats > 60)).mean())
+seat_min, seat_max = int(rep_seats.min()), int(rep_seats.max())
+n_personas_26 = pl.read_parquet(ROOT / "data" / "02-analysis_data" / "personas_2026.parquet").height
+personas_per_state = round(n_personas_26 / 35)
+
+# National error: the assumed value set in 04-forecast.py
+nat_sd = 100 * float(re.search(r"NATIONAL_SD = ([0-9.]+)", (ROOT / "scripts" / "04-forecast.py").read_text()).group(1))
+
+# State error: leave-one-out error of the 2024 calibration line (as in 04-forecast.py)
+loo = []
+for m in sd["bt"]["model"].unique():
+    d = sd["bt"].filter(pl.col("model") == m)
+    x, y = d["rep_share"].to_numpy(), d["actual"].to_numpy()
+    for i in range(len(x)):
+        keep = np.arange(len(x)) != i
+        b, a = np.polyfit(x[keep], y[keep], 1)
+        loo.append(y[i] - (a + b * x[i]))
+state_sd = 100 * float(np.std(loo, ddof=1))
+
 
 def share(df, source, side):
     row = df[(df["source"] == source) & (df["side"] == side)]
     return f"{100 * row['share'].iloc[0]:.0f}%" if len(row) else "0%"
 ```
 
-::: {.write}
-Opening paragraph (2 to 3 sentences): what this page is and that every "voter" is synthetic. Then the headline:
-Republicans keep the Senate in **`{python} f"{100 * ctrl['p_rep_control']:.0f}%"`** of 10,000 simulated elections,
-median **`{python} f"{ctrl['median']:.0f}"`** Republican seats (80% interval `{python} f"{ctrl['lo']:.0f}"` to
-`{python} f"{ctrl['hi']:.0f}"`). Republicans are favoured in `{python} str(rep_favoured)` of 35 races.
-:::
+On this page we forecast all 35 races held on November 3 in the 2026 U.S. Senate elections. For each of 5,173 real respondents from the 2024 Cooperative Election Study, we wrote a short persona, including information such as their age, gender, race, state, education, income, party identification, ideology. We then fed each persona in the first person to three large language models (the third for comparison only) and asked how the persona would vote. Each model gave 5 answers per persona. These answers were then weighted to midterm voters, corrected using a 2024 backtest, and used for 10,000 simulated elections. This method is called silicon sampling [@argyle2023]. We forecast a `{python} f"{100 * ctrl['p_rep_control']:.0f}%"` chance that Republicans keep control, with a median of `{python} f"{ctrl['median']:.0f}"` Republican seats  (80% interval `{python} f"{ctrl['lo']:.0f}"` to `{python} f"{ctrl['hi']:.0f}"`), and favored in `{python} str(rep_favoured)` out of 35 races.
 
 ## The forecast {#forecast}
 
@@ -67,10 +101,12 @@ median **`{python} f"{ctrl['median']:.0f}"`** Republican seats (80% interval `{p
 si.fig_seats(seats)
 ```
 
-::: {.write}
-Read the seat chart for the reader: probability of control, the most likely outcomes, how wide the spread is and why
-(the national error is shared by every state, so states move together).
-:::
+One full simulated election means that every one of the 35 races has a winner. We ran 10,000 of these simulated elections, and each one of them finished with a set number of Republican senators (31 Republican seats not up this year + races won by Republicans this year out of the 35). Each bar is one seat count (`{python} seat_min` to `{python} seat_max`). There is a total of 100 senate seats, and each bar counts simulations that ends with that number of Republican seats out of 100. So red bars are 50 or more Republican seats (Republicans control the senate), and blue bars are 49 or fewer (Democrats control the senate). If we add up all the red bars, we get `{python} f"{100 * ctrl['p_rep_control']:.0f}%"` of our simulations, meaning that republicans keep control of the senate in approximately 7/10 simulations.
+
+The most common outcomes are `{python} f"{ctrl['median']:.0f}"` Republican seats (`{python} pct_52` of the simulations, also happens to be the median), 51 or 53 Republican seats (each `{python} pct_51` of the simulations), and an exact 50-50 tie (`{python} pct_tie` of the simulations). Republicans controlled the senate outright (51 or more seats) in `{python} pct_outright` of the simulations. Republicans gained more seats compared to today (54 or more seats) in `{python} pct_gain` of the simulations.
+
+Notice that the spread of the histogram is very wide. The 80% interval is from `{python} f"{ctrl['lo']:.0f}"` to `{python} f"{ctrl['hi']:.0f}"`, which means that about 8 out of every 10 simulations have Republicans hold between `{python} f"{ctrl['lo']:.0f}"` and `{python} f"{ctrl['hi']:.0f}"` seats. The full range is `{python} seat_min` to `{python} seat_max` seats. Why is our histogram so wide? For every simulated election we introduce four kinds of uncertainty. First is a national error shared by every state, where we draw one number from a normal distribution with a set standard deviation of `{python} f"{nat_sd:.0f}"` percentage points to determine how far the forecast is off nationwide. This matters because if state wise errors were independent, they would often cancel each other out and lead to a bunched-together histogram around `{python} f"{ctrl['median']:.0f}"`. Moving every state in the same direction is also honest because real polling misses also tend to run the same way across states, like in 2016 and 2020 [@gelman2020]. Second is a state error drawn for each separate race to capture local factors (effect of candidates, local issues, campaign success), it was measured as how far off the corrected forecast was for each state in the 2024 backtest and has a standard deviation of `{python} f"{state_sd:.1f}"` percentage points. Third, in each simulation we pick one of two LLM models (GPT-4o mini or Llama 3.3 70B) and use its numbers for every state. And fourth, there is sampling error caused by the limited number of personas for each state (about `{python} personas_per_state` on average).
+
 
 ```{python}
 #| label: fig-states
@@ -78,10 +114,10 @@ Read the seat chart for the reader: probability of control, the most likely outc
 si.fig_state_dots(sd["draws"], summary)
 ```
 
-::: {.write}
-How to read the dot plot (count the dots on each side of 50%). Name the closest races: Texas, North Carolina,
-Michigan, Georgia. Point to the full table in the appendix.
-:::
+In this graph, each row is 1 race/1 state, so there are 35 rows total. Looking at the 50% line, a dot to the right is a Republican win, and a dot to the left is an opposition win. There are 20 dots on each row, and each dot is one equally likely outcome. So, what is a dot and where does it come from? For each state, we sort the 10,000 simulated results from most Democratic to most Republican and then cut this sorted list into 20 equal slices each with 500 simulations. Each dot is the middle of one of these slices and stands for about a 5% chance. This kind of graph is a quantile dot plot, used by @kay2016 because people are better at judging chances by counting outcomes rather than looking at a probability curve or reading a numerical percentage. So, to get a rough chance that Republicans win, just count the red dots (the dots to the right of the 50% line). Just keep in mind that counting is only accurate to about 5 percentage points, and you can refer to @tbl-forecast for exact chances.
+
+Rows are sorted by median, so the most Republican races are at the top of the graph, and the most Democratic races are at the bottom. The closest races are the ones where the dots straddle 50%. The two closest races here are Texas and North Carolina, where there are 11 red dots out of 20, giving an approximate Republican chance of 55% (the actual exact chance is `{python} f"{100 * summary.filter(state='TX')['p_rep_win'][0]:.0f}%"`). Michigan has 13 red dots, with a Republican chance of `{python} f"{100 * summary.filter(state='MI')['p_rep_win'][0]:.0f}%"`, and is a seat that Republicans are favored to take from Democrats. Georgia has 7 red dots and a Republican chance of `{python} f"{100 * summary.filter(state='GA')['p_rep_win'][0]:.0f}%"`; it is a Democratic seat where Republicans are behind.
+
 
 ## How the forecast is built {#method}
 
@@ -90,14 +126,20 @@ Michigan, Georgia. Point to the full table in the appendix.
 print(si.pipeline_html())
 ```
 
-::: {.write}
-One short paragraph per step, in order: (1) personas from real CES 2024 respondents [@kuriwaki2025]; (2) the prompt,
-following @argyle2023 and @bisbee2024; (3) three models through OpenRouter, five answers each at temperature 1;
-(4) weights: survey weight times midterm turnout estimated from CES 2022; (5) calibration with the 2024 line;
-(6) the simulation, with its four sources of uncertainty (national swing of 3 points, an assumption; state error of
-4.7 points, measured leave-one-out; which model; sampling). Ballots from @wiki2026.
-:::
+First, we created personas. We used the 2024 respondents in the cumulative CES file, which sets every year’s survey into one consistent format [@kuriwaki2025]. We included only respondents who live in the 35 states with a 2026 senate race, and randomly drew up to 150 respondents in each state (A few had fewer respondents and the minimum is 95). This process gave us a total of `{python} n_personas_26` personas. A persona is a short paragraph written in first person, built from a real respondent’s own answers [@argyle2023], which in our case includes details regarding age, race, gender, state, education, family income, party identification (on a 7-point scale from strong Democrat to strong Republican), ideology (very liberal to very conservative), religious attendance, and how closely they follow politics. If a respondent left an answer blank, that detail is left entirely out of their persona. We use these 2024 respondents to stand in for 2026 voters because we did not survey anybody in 2026.
 
+Second, we created prompts for the AI models. They contained in order: a system message telling the model to answer as the person using only knowledge about politics they would have, the persona, the ballot (in Ohio and Florida it says special election, in independent races it says, “an independent”, and in Montana and Mississippi it lists all three), and all allowed answers (Republican, Democrat, Other, Would not vote). We got the 2026 ballot from Wikipedia [@wiki2026]. Candidates are described only by their party and not their name in order to keep 2024 and 2026 comparable. See [the example prompt below](#ohio-prompt). For pure independents, the models mostly answered “Other” even though in 2024 about half of the self-reported independents picked either Democrat or Republican. We remedied this with a follow-up question forcing a choice, which is detailed further in [The independents problem](#independents).
+
+Third, we used 3 models through OpenRouter [@citeOpenRouter]. We used GPT-4o mini [@gpt4omini] and Llama 3.3 70B [@llama33] for our forecasting because their training data ends before the 2024 election, allowing them to be tested on 2024. We used DeepSeek V4 Flash [@deepseekv4] for comparison only because its knowledge on 2025-26 means it cannot be tested on 2024. Each model gave five answers for every persona. We used temperature 1, so answers are sampled in proportion to how likely the model thinks each asnwer is. For example, a persona responding Republican 3/5 times is counted as 60% Republican rather than as 1 Republican vote. Our number of replies and total cost are detailed below in @tbl-costs.
+
+Fourth, we produced state estimates from our answers through weights. Each persona gets a Republican share, which is Republican answers divided by answers for any major candidate on the ballot (Republican, Democrat, independent). In the three-way races in Montana and Mississippi, we measure Republican against the Democrat and independent combined. Each persona’s weight is calculated by their CES survey weight (makes the sample match the state’s adult population) multiplied by their turnout probability (the share of 2022 CES respondents in the same age band, college/no college, and news-interest group who actually voted, according to official voter records). We conducted post-stratification, meaning the estimate of each state is the weighted average of the shares of its personas.
+
+Fifth, we conducted calibration. In our 2024 backtest with 33 races and 4,833 personas, the raw estimates were too Democratic and extreme, which @bisbee2024 also recognized. For each model we fit a straight line on the 33 races, `actual = a + b × raw`. For GPT the slope was `{python} f"{calib['GPT-4o mini']['slope']:.2f}"`, and for Llama the slope was `{python} f"{calib['Llama 3.3 70B']['slope']:.2f}"`. A slope of about 0.63 says that the real results are about 2/3 as lopsided as the synthetic results. Our line corrects every 2026 estimate since the intercept corrects the Democratic lean and the slope pulls extreme estimates toward the middle. We conducted this calibration with the assumption that the 2024 model errors carry over to 2026.
+
+Lastly, we simulated 10,000 elections. In each election we add random errors to every state’s corrected estimate, and the state is called for the candidate with above 50%. The number of Republican seats is counted, and we add the 31 Republican seats that are not up. The four sources of uncertainty are detailed in the explanation of @fig-seats.
+
+
+::: {#ohio-prompt}
 ```{python}
 #| output: asis
 races26 = {r["state"]: r for r in sd["races_2026"].iter_rows(named=True)}
@@ -107,11 +149,9 @@ example = pl.read_parquet(ROOT / "data" / "02-analysis_data" / "personas_2026.pa
 prompt = query.build_prompt(example["backstory"], races26["OH"], 2026)
 print(f'<div class="prompt-box"><b>System:</b> {query.SYSTEM_PROMPT}\n\n<b>User:</b> {prompt}</div>')
 ```
-
-::: {.write}
-One sentence introducing the prompt above (a real Ohio persona, shown exactly as sent). Mention the forced-choice
-follow-up for pure independents (section 4).
 :::
+
+This persona, drawn at random, is real and made from a CES 2024 respondent from Ohio. The prompt is shown in the exact form it is fed to the models. Note that this persona is a pure independent, which is the type of persona that led models to answer “Other”, and receive a follow-up calling it to choose between the Republican and Democratic candidate, as described in [the independents problem](#independents).
 
 ## Does it work? The 2024 backtest {#backtest}
 
@@ -126,7 +166,7 @@ so real results are about two thirds as lopsided as the synthetic ones. Link to 
 
 ```{python}
 #| label: fig-backtest
-#| fig-cap: "2024 backtest. Each dot is one of the 33 Senate races of 2024: the synthetic voters' Republican share (before calibration) against the actual result [@wiki2024]. The dashed line is a perfect forecast; the solid line is the calibration line fitted to these races and used to correct the 2026 forecast. The three largest misses for each model are labelled."
+#| fig-cap: "2024 backtest. Each dot is one of the 33 Senate races of 2024: the synthetic voters' Republican share (before calibration) against the actual result [@wiki2024]. The dashed line is a perfect forecast; the solid line is the calibration line fitted to these races and used to correct the 2026 forecast. The three largest misses for each model are labeled."
 si.fig_backtest(sd["bt"], sd["calib"])
 ```
 
@@ -170,7 +210,7 @@ partisanship, 2014 to 2024, checked against certified results. The full write-up
 
 ```{python}
 #| label: fig-regression
-#| fig-cap: "Silicon sampling against the regression, one dot per 2026 race. Red and blue dots are races where both methods favour the same side; hollow dots are races where they disagree. The regression's share is the Republican share of the two-party vote."
+#| fig-cap: "Silicon sampling against the regression, one dot per 2026 race. Red and blue dots are races where both methods favor the same side; hollow dots are races where they disagree. The regression's share is the Republican share of the two-party vote."
 si.fig_vs_regression(cmp)
 ```
 

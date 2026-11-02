@@ -93,12 +93,12 @@ else:
 
 ## Map of predicted winners
 
-Blue: a Democrat is predicted to win; red: a Republican; grey: no Senate race in 2026. Each state shows the surname of
+Blue: a Democrat is predicted to win; red: a Republican; gray: no Senate race in 2026. Each state shows the surname of
 the predicted winner (the nominee of the winning party).
 
 ```{python}
 if races is not None:
-    display(HTML(views.figure_html(views.winner_map(races), "Map of the United States. States with a 2026 Senate race are blue where a Democrat is predicted to win and red where a Republican is, each labelled with the predicted winner's surname; states with no race are grey.")))
+    display(HTML(views.figure_html(views.winner_map(races), "Map of the United States. States with a 2026 Senate race are blue where a Democrat is predicted to win and red where a Republican is, each labeled with the predicted winner's surname; states with no race are gray.")))
 else:
     display(Markdown("*The map is shown only for real-data runs.*"))
 ```
@@ -134,7 +134,7 @@ The three requested training sets are 2022 only, 2024 only, and both cycles toge
 
 ```{python}
 #| fig-cap: "Predicted Democratic two-party share by state under each training set."
-#| fig-alt: "Dot plot of predicted Democratic two-party share per state, with a marker shape and colour for each training set."
+#| fig-alt: "Dot plot of predicted Democratic two-party share per state, with a marker shape and color for each training set."
 plots["model_comparison"]
 ```
 
@@ -235,7 +235,7 @@ information that would not have been available, and fixed what I found.
 leaks = [
     ("Same-year features", "Features and targets came from the same survey year and the same respondents; for 2026 we only have 2024 data.", "Features are now **lagged two years** (cycle *y* uses the survey of *y - 2*); same-year tables are kept only to measure the leak."),
     ("ACS vintage", "The ACS 5-year estimate for year *Y* is published after the year-*Y* election.", "Lagged with the other features, so only data published before the election are used."),
-    ("Same-cycle information", "Leave-one-state-out let other states' results from the same election (the national swing) inform the held-out state.", "Kept, labelled optimistic. The headline test is **forward-chaining** on earlier cycles."),
+    ("Same-cycle information", "Leave-one-state-out let other states' results from the same election (the national swing) inform the held-out state.", "Kept, labeled optimistic. The headline test is **forward-chaining** on earlier cycles."),
     ("Time travel", "Leave-one-cycle-out and predict-other-years let later cycles train a model that scored earlier ones.", "Removed."),
     ("Baseline fold", "The mean-share baseline was computed on all training rows, including the held-out state.", "Computed inside each fold."),
     ("2026 forecast", "Models trained on same-year features were applied to two-year-old features.", "The forecast now uses models trained on lagged features."),
@@ -285,7 +285,7 @@ as the regression (those where every method makes a prediction), against certifi
 
 ```{python}
 #| fig-cap: "Winner accuracy of the regression and the simple baselines on identical state-races."
-#| fig-alt: "Horizontal bars of the share of Senate winners called correctly, with the two regression bars in blue and the baselines in grey."
+#| fig-alt: "Horizontal bars of the share of Senate winners called correctly, with the two regression bars in blue and the baselines in gray."
 plots["baselines"]
 ```
 
@@ -445,7 +445,7 @@ plots["midterm_vs_all"]
    and sum to one.
 4. **Penalty:** ridge, chosen by leave-one-out cross-validation.
 5. **2026 features:** no 2026 survey exists, so the 2024 profiles are carried forward.
-6. **Candidate characteristics are not modelled.** A search found no open dataset covering candidates' race, gender
+6. **Candidate characteristics are not modeled.** A search found no open dataset covering candidates' race, gender
    and incumbency for both major-party Senate candidates across 2014-2024 (the FEC flags incumbency but not race or
    gender; Ballotpedia and OpenSecrets are not open). The 2026 nominee names, incumbency and portraits on this page
    are used for display only, not as model inputs.

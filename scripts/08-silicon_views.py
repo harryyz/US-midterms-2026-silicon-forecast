@@ -11,8 +11,8 @@
 #
 # Design grammar (one style for every figure and table on the page):
 #   - Typeface: Newsreader (bundled in paper/fonts, SIL Open Font License)
-#   - Colour only where it means a party: Republican #B4232C, opposition #1F4E8C.
-#     Everything else is black #222222 or grey #8A8A8A, told apart by shape.
+#   - Color only where it means a party: Republican #B4232C, opposition #1F4E8C.
+#     Everything else is black #222222 or gray #8A8A8A, told apart by shape.
 #   - Newspaper charts: white background, faint horizontal grid only, no box,
 #     one dashed reference line per chart, direct labels where possible.
 #   - Tables: booktabs (three rules, no vertical lines, right-aligned numbers).
