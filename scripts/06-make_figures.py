@@ -22,12 +22,30 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import polars as pl
+from matplotlib import font_manager
 from mizani.bounds import squish
 from plotnine import (
-    aes, coord_flip, element_blank, element_line, element_text, facet_grid,
-    geom_abline, geom_col, geom_point, geom_text, geom_tile, geom_vline, ggplot,
-    labs, scale_color_manual, scale_fill_gradient2, scale_fill_manual,
-    scale_shape_manual, scale_x_continuous, scale_y_continuous, theme,
+    aes,
+    coord_flip,
+    element_blank,
+    element_line,
+    element_text,
+    facet_grid,
+    geom_abline,
+    geom_col,
+    geom_point,
+    geom_text,
+    geom_tile,
+    geom_vline,
+    ggplot,
+    labs,
+    scale_color_manual,
+    scale_fill_gradient2,
+    scale_fill_manual,
+    scale_shape_manual,
+    scale_x_continuous,
+    scale_y_continuous,
+    theme,
     theme_minimal,
 )  # fmt: skip
 
@@ -66,15 +84,24 @@ def load(source: str = "simulated", root: Path = Path("."), write: bool = True) 
     """Run the regression and collect everything the figures need."""
     reg = load_regression_module()
     reg.ROOT = Path(root)
-    out = reg.run(source, write=write)  # write=False: re-use the model without touching the saved result files
+    out = reg.run(
+        source, write=write
+    )  # write=False: re-use the model without touching the saved result files
 
     # Out-of-sample predictions: forward-chaining on lagged features, widest training set
     sets, fsets = out["sets"], out["feature_sets"]
-    fs, _ = out["selected"]  # chosen by validation performance, not by looking at the test
-    label = "all" if "all" in sets else sorted(sets, key=lambda k: -len(sets[k]))[0]  # expanding window
+    fs, _ = out[
+        "selected"
+    ]  # chosen by validation performance, not by looking at the test
+    label = (
+        "all" if "all" in sets else sorted(sets, key=lambda k: -len(sets[k]))[0]
+    )  # expanding window
     table = out["tables"]["lagged"].drop_nulls(fsets[fs])
     test, pred, _ = reg.forward_chaining(table, fsets[fs], sets[label])
-    has_official = "official_dem2p" in test.columns and test["official_dem2p"].drop_nulls().len() > 0
+    has_official = (
+        "official_dem2p" in test.columns
+        and test["official_dem2p"].drop_nulls().len() > 0
+    )
     oos = test.select("st", "year", "dem", "rep", *(["official_dem2p"] if has_official else [])).with_columns(
         pred_dem=pl.Series(pred[:, 0]),
         pred_rep=pl.Series(pred[:, 1]),
@@ -101,6 +128,15 @@ def pick(preds: pl.DataFrame, train: str, features: str | None = None) -> pd.Dat
 
 
 #### Theme ####
+# Use the site's bundled typeface (paper/fonts), so figures render the same on every
+# machine; the system default font failed to load glyphs on macOS.
+FONT = "Newsreader"
+for _f in sorted(
+    (Path(__file__).resolve().parent.parent / "paper" / "fonts").glob("*.ttf")
+):
+    font_manager.fontManager.addfont(str(_f))
+
+
 def base_theme(**kw):
     args = dict(
         text=element_text(color=INK),
@@ -113,17 +149,28 @@ def base_theme(**kw):
         legend_title=element_blank(),
     )
     args.update(kw)  # callers override defaults
-    return theme_minimal() + theme(**args)
+    return theme_minimal(base_family=FONT) + theme(**args)
 
 
 #### Figures ####
-def fig_forecast(preds: pl.DataFrame, train: str = "2022+2024", features: str | None = None):
+def fig_forecast(
+    preds: pl.DataFrame, train: str = "2022+2024", features: str | None = None
+):
     """Stacked bars: predicted Dem / Rep / Undecided share in every 2026 race."""
     d = pick(preds, train, features)
     order = d.sort_values("dem2p")["st"].tolist()
-    long = d.melt(id_vars="st", value_vars=["p_rep", "p_und", "p_dem"], var_name="party", value_name="share")
+    long = d.melt(
+        id_vars="st",
+        value_vars=["p_rep", "p_und", "p_dem"],
+        var_name="party",
+        value_name="share",
+    )
     names = {"p_dem": "Democratic", "p_rep": "Republican", "p_und": "Undecided / other"}
-    long["party"] = pd.Categorical(long["party"].map(names), categories=["Republican", "Undecided / other", "Democratic"], ordered=True)
+    long["party"] = pd.Categorical(
+        long["party"].map(names),
+        categories=["Republican", "Undecided / other", "Democratic"],
+        ordered=True,
+    )
     long["st"] = pd.Categorical(long["st"], categories=order, ordered=True)
     return (
         ggplot(long, aes("st", "share", fill="party"))
@@ -140,11 +187,19 @@ def fig_forecast(preds: pl.DataFrame, train: str = "2022+2024", features: str | 
 
 def fig_models(preds: pl.DataFrame, features: str | None = None):
     """Dem two-party share by state under the three requested training sets."""
-    parts = [pick(preds, t, features).assign(model=t) for t in MODEL_COLOURS if t in preds["train"].unique().to_list()]
+    parts = [
+        pick(preds, t, features).assign(model=t)
+        for t in MODEL_COLOURS
+        if t in preds["train"].unique().to_list()
+    ]
     d = pd.concat(parts)
-    order = d[d["model"] == parts[-1]["model"].iloc[0]].sort_values("dem2p")["st"].tolist()
+    order = (
+        d[d["model"] == parts[-1]["model"].iloc[0]].sort_values("dem2p")["st"].tolist()
+    )
     d["st"] = pd.Categorical(d["st"], categories=order, ordered=True)
-    d["model"] = pd.Categorical(d["model"], categories=list(MODEL_COLOURS), ordered=True)
+    d["model"] = pd.Categorical(
+        d["model"], categories=list(MODEL_COLOURS), ordered=True
+    )
     return (
         ggplot(d, aes("dem2p", "st", color="model", shape="model"))
         + geom_vline(xintercept=0.5, color=GREY, linetype="dashed")
@@ -159,16 +214,21 @@ def fig_models(preds: pl.DataFrame, features: str | None = None):
     )  # fmt: skip
 
 
-def fig_tilemap(preds: pl.DataFrame, train: str = "2022+2024", features: str | None = None):
+def fig_tilemap(
+    preds: pl.DataFrame, train: str = "2022+2024", features: str | None = None
+):
     """Tile map of the predicted Dem two-party share; states without a 2026 race are blank."""
     d = pick(preds, train, features).set_index("st")["dem2p"].to_dict()
-    rows = [{"st": s, "x": c, "y": -r, "dem2p": d.get(s, np.nan), "race": s in d} for s, (r, c) in TILES.items()]
+    rows = [
+        {"st": s, "x": c, "y": -r, "dem2p": d.get(s, np.nan), "race": s in d}
+        for s, (r, c) in TILES.items()
+    ]
     t = pd.DataFrame(rows)
     return (
         ggplot(t, aes("x", "y"))
         + geom_tile(aes(fill="dem2p"), width=0.94, height=0.94, color="#fcfcfb", data=t[t["race"]])
         + geom_tile(width=0.94, height=0.94, fill="#f5f4f1", color="#fcfcfb", data=t[~t["race"]])
-        + geom_text(aes(label="st"), size=8, color=INK)
+        + geom_text(aes(label="st"), size=8, color=INK, family=FONT)
         + scale_fill_gradient2(low=RED, mid=MID, high=BLUE, midpoint=0.5, limits=(0.2, 0.8), oob=squish,
                                breaks=[0.2, 0.5, 0.8], labels=lambda v: [f"{x:.0%}" for x in v], name="Dem two-party share")  # fmt: skip
         + labs(title="Predicted Democratic share of the two-party vote",
@@ -199,8 +259,12 @@ def fig_accuracy(oos: pl.DataFrame, has_official: bool, label: str):
 def fig_metrics(metrics: pl.DataFrame):
     """Error of the Dem-share prediction against a mean-share baseline (lagged features)."""
     d = metrics.filter(pl.col("timing") == "lagged").to_pandas()
-    d["train"] = pd.Categorical(d["train"], categories=list(dict.fromkeys(d["train"])), ordered=True)
-    d["scheme"] = d["scheme"].str.replace(" (same-cycle info)", "\n(same-cycle info: optimistic)", regex=False)
+    d["train"] = pd.Categorical(
+        d["train"], categories=list(dict.fromkeys(d["train"])), ordered=True
+    )
+    d["scheme"] = d["scheme"].str.replace(
+        " (same-cycle info)", "\n(same-cycle info: optimistic)", regex=False
+    )
     return (
         ggplot(d, aes("train"))
         + geom_col(aes(y="mae_dem"), fill=BLUE, width=0.6)
@@ -215,10 +279,18 @@ def fig_metrics(metrics: pl.DataFrame):
 
 def fig_leakage(metrics: pl.DataFrame):
     """How much accuracy the leaky design added: lagged vs same-year features."""
-    d = metrics.filter(pl.col("features") == "ces", pl.col("official_mae_dem2p").is_not_null()).to_pandas()
-    d["train"] = pd.Categorical(d["train"], categories=list(dict.fromkeys(d["train"]))[::-1], ordered=True)
-    d["scheme"] = d["scheme"].str.replace(" (same-cycle info)", "\n(same-cycle info)", regex=False)
-    d["timing"] = pd.Categorical(d["timing"], categories=["lagged", "contemporaneous"], ordered=True)
+    d = metrics.filter(
+        pl.col("features") == "ces", pl.col("official_mae_dem2p").is_not_null()
+    ).to_pandas()
+    d["train"] = pd.Categorical(
+        d["train"], categories=list(dict.fromkeys(d["train"]))[::-1], ordered=True
+    )
+    d["scheme"] = d["scheme"].str.replace(
+        " (same-cycle info)", "\n(same-cycle info)", regex=False
+    )
+    d["timing"] = pd.Categorical(
+        d["timing"], categories=["lagged", "contemporaneous"], ordered=True
+    )
     return (
         ggplot(d, aes("official_mae_dem2p", "train", color="timing", shape="timing"))
         + geom_point(size=2.8, alpha=0.9)
@@ -235,8 +307,14 @@ def fig_leakage(metrics: pl.DataFrame):
 def fig_baselines(summary: pl.DataFrame):
     """Winner accuracy of the ridge model and every simple baseline on identical rows."""
     d = summary.to_pandas().sort_values("winner_acc")
-    d["kind"] = np.where(d["method"].str.startswith("ridge"), "Regression", "Simple baseline")
-    d["method"] = pd.Categorical(d["method"].str.replace("baseline: ", "", regex=False), categories=d["method"].str.replace("baseline: ", "", regex=False).tolist(), ordered=True)
+    d["kind"] = np.where(
+        d["method"].str.startswith("ridge"), "Regression", "Simple baseline"
+    )
+    d["method"] = pd.Categorical(
+        d["method"].str.replace("baseline: ", "", regex=False),
+        categories=d["method"].str.replace("baseline: ", "", regex=False).tolist(),
+        ordered=True,
+    )
     return (
         ggplot(d, aes("method", "winner_acc", fill="kind"))
         + geom_col(width=0.7, color="#fcfcfb", size=0.6)
@@ -252,15 +330,19 @@ def fig_baselines(summary: pl.DataFrame):
 
 def fig_midterm(preds: pl.DataFrame, features: str):
     """2026 forecast from midterm-only models against the all-cycle model, state by state."""
-    a = pick(preds, "all", features)[["st", "dem2p"]].rename(columns={"dem2p": "all_cycles"})
-    m = pick(preds, "midterms", features)[["st", "dem2p"]].rename(columns={"dem2p": "midterm_only"})
+    a = pick(preds, "all", features)[["st", "dem2p"]].rename(
+        columns={"dem2p": "all_cycles"}
+    )
+    m = pick(preds, "midterms", features)[["st", "dem2p"]].rename(
+        columns={"dem2p": "midterm_only"}
+    )
     d = a.merge(m, on="st")
     d["gap"] = (d["midterm_only"] - d["all_cycles"]).abs()
     return (
         ggplot(d, aes("all_cycles", "midterm_only"))
         + geom_abline(slope=1, intercept=0, color=GREY, linetype="dashed")
         + geom_point(color=BLUE, size=2.2, alpha=0.8, stroke=0)
-        + geom_text(aes(label="st"), data=d[d["gap"] > 0.06], size=7, color=INK, nudge_y=0.012)
+        + geom_text(aes(label="st"), data=d[d["gap"] > 0.06], size=7, color=INK, nudge_y=0.012, family=FONT)
         + scale_x_continuous(labels=lambda v: [f"{x:.0%}" for x in v])
         + scale_y_continuous(labels=lambda v: [f"{x:.0%}" for x in v])
         + labs(title="2026: midterm-only model versus all-cycle model",
@@ -272,10 +354,16 @@ def fig_midterm(preds: pl.DataFrame, features: str):
 
 def all_figures(res: dict) -> dict:
     return {
-        "forecast_bars": fig_forecast(res["preds"], res["headline_train"], res["oos_features"]),
-        "forecast_map": fig_tilemap(res["preds"], res["headline_train"], res["oos_features"]),
+        "forecast_bars": fig_forecast(
+            res["preds"], res["headline_train"], res["oos_features"]
+        ),
+        "forecast_map": fig_tilemap(
+            res["preds"], res["headline_train"], res["oos_features"]
+        ),
         "model_comparison": fig_models(res["preds"], features=res["oos_features"]),
-        "accuracy_scatter": fig_accuracy(res["oos"], res["has_official"], res["oos_label"]),
+        "accuracy_scatter": fig_accuracy(
+            res["oos"], res["has_official"], res["oos_label"]
+        ),
         "error_by_model": fig_metrics(res["metrics"]),
         "leakage_check": fig_leakage(res["metrics"]),
         "baselines": fig_baselines(res["summary"]),

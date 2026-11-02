@@ -85,6 +85,47 @@ for m in sd["bt"]["model"].unique():
         loo.append(y[i] - (a + b * x[i]))
 state_sd = 100 * float(np.std(loo, ddof=1))
 
+# Corrected 2024 accuracy per model, leave-one-out (each state predicted by a line fitted without it)
+loo_mae, loo_right = {}, {}
+for m in ["GPT-4o mini", "Llama 3.3 70B"]:
+    d = sd["bt"].filter(pl.col("model") == m)
+    x, y = d["rep_share"].to_numpy(), d["actual"].to_numpy()
+    preds = []
+    for i in range(len(x)):
+        keep = np.arange(len(x)) != i
+        b, a = np.polyfit(x[keep], y[keep], 1)
+        preds.append(a + b * x[i])
+    preds = np.array(preds)
+    loo_mae[m] = 100 * float(np.abs(y - preds).mean())
+    loo_right[m] = int(((preds > 0.5) == (y > 0.5)).sum())
+
+# Raw 2024 lean (actual - synthetic, points) split by which side won the race
+lean_by_side = (
+    sd["bt"].with_columns(side=pl.when(pl.col("actual") < 0.5).then(pl.lit("D")).otherwise(pl.lit("R")))
+    .group_by("model", "side").agg(lean=(pl.col("actual") - pl.col("rep_share")).mean() * 100, n=pl.len())
+)
+lean = {(r["model"], r["side"]): r["lean"] for r in lean_by_side.iter_rows(named=True)}
+n_dem_won = int(lean_by_side.filter(pl.col("side") == "D")["n"][0])
+n_rep_won = int(lean_by_side.filter(pl.col("side") == "R")["n"][0])
+
+# Person-level agreement in 2024 (Figure 4): unweighted share whose synthetic side matches their reported vote
+PARTISAN = ["Strong Democrat", "Not Very Strong Democrat", "Lean Democrat",
+            "Lean Republican", "Not Very Strong Republican", "Strong Republican"]  # fmt: skip
+WHO = {"openai/gpt-4o-mini": "GPT-4o mini", "meta-llama/llama-3.3-70b-instruct": "Llama 3.3 70B",
+       "party-line baseline": "Baseline"}  # fmt: skip
+bp = sd["by_party"].filter(pl.col("model").is_in(list(WHO)))
+part = bp.filter(pl.col("pid7").is_in(PARTISAN)).group_by("model").agg(
+    agree=(pl.col("agreement") * pl.col("n")).sum() / pl.col("n").sum(), n=pl.col("n").sum()
+)
+agree_partisan = {WHO[r["model"]]: f"{100 * r['agree']:.1f}%" for r in part.iter_rows(named=True)}
+n_partisan = {WHO[r["model"]]: f"{r['n']:,}" for r in part.iter_rows(named=True)}
+ind = bp.filter(pl.col("pid7") == "Independent")
+agree_ind = {WHO[r["model"]]: f"{100 * r['agreement']:.1f}%" for r in ind.iter_rows(named=True)}
+n_ind_voted = int(ind["n"].max())  # pure independents with a reported vote for a major candidate
+n_ind_rep = int(sd["personas_2024"].filter((pl.col("pid7") == "Independent") & (pl.col("voted_sen_party") == "Republican")).height)
+n_ind_opp = n_ind_voted - n_ind_rep
+pct_ind_rep = pct(n_ind_rep / n_ind_voted)
+
 
 def share(df, source, side):
     row = df[(df["source"] == source) & (df["side"] == side)]
@@ -114,7 +155,7 @@ Notice that the spread of the histogram is very wide. The 80% interval is from `
 si.fig_state_dots(sd["draws"], summary)
 ```
 
-In this graph, each row is 1 race/1 state, so there are 35 rows total. Looking at the 50% line, a dot to the right is a Republican win, and a dot to the left is an opposition win. There are 20 dots on each row, and each dot is one equally likely outcome. So, what is a dot and where does it come from? For each state, we sort the 10,000 simulated results from most Democratic to most Republican and then cut this sorted list into 20 equal slices each with 500 simulations. Each dot is the middle of one of these slices and stands for about a 5% chance. This kind of graph is a quantile dot plot, used by @kay2016 because people are better at judging chances by counting outcomes rather than looking at a probability curve or reading a numerical percentage. So, to get a rough chance that Republicans win, just count the red dots (the dots to the right of the 50% line). Just keep in mind that counting is only accurate to about 5 percentage points, and you can refer to @tbl-forecast for exact chances.
+In this graph, each row is 1 race/1 state, so there are 35 rows total. Looking at the 50% line, a dot to the right is a Republican win, and a dot to the left is an opposition win. There are 20 dots on each row, and each dot is one equally likely outcome. So, what is a dot and where does it come from? For each state, we sort the 10,000 simulated results from most Democratic to most Republican and then cut this sorted list into 20 equal slices each with 500 simulations. Each dot is the middle of one of these slices and stands for about a 5% chance. This graph is a quantile dot plot, used by @kay2016 because people are better at judging chances by counting outcomes rather than looking at a probability curve or reading a numerical percentage. So, to get a rough chance that Republicans win, just count the red dots (the dots to the right of the 50% line). Just keep in mind that counting is only accurate to about 5 percentage points, and you can refer to @tbl-forecast for exact chances.
 
 Rows are sorted by median, so the most Republican races are at the top of the graph, and the most Democratic races are at the bottom. The closest races are the ones where the dots straddle 50%. The two closest races here are Texas and North Carolina, where there are 11 red dots out of 20, giving an approximate Republican chance of 55% (the actual exact chance is `{python} f"{100 * summary.filter(state='TX')['p_rep_win'][0]:.0f}%"`). Michigan has 13 red dots, with a Republican chance of `{python} f"{100 * summary.filter(state='MI')['p_rep_win'][0]:.0f}%"`, and is a seat that Republicans are favored to take from Democrats. Georgia has 7 red dots and a Republican chance of `{python} f"{100 * summary.filter(state='GA')['p_rep_win'][0]:.0f}%"`; it is a Democratic seat where Republicans are behind.
 
@@ -155,14 +196,10 @@ This persona, drawn at random, is real and made from a CES 2024 respondent from 
 
 ## Does it work? The 2024 backtest {#backtest}
 
-::: {.write}
-We ran the same pipeline on 2024, when the answers are known: 4,833 personas in 33 races, with models whose knowledge
-ends before that election. Before calibration the models are too Democratic (bias
-`{python} f"{bt_stats.filter(model='GPT-4o mini')['bias'][0]:.1f}"` points for GPT-4o mini,
-`{python} f"{bt_stats.filter(model='Llama 3.3 70B')['bias'][0]:.1f}"` for Llama) and too extreme: the calibration
-slopes are `{python} f"{calib['GPT-4o mini']['slope']:.2f}"` and `{python} f"{calib['Llama 3.3 70B']['slope']:.2f}"`,
-so real results are about two thirds as lopsided as the synthetic ones. Link to @bisbee2024.
-:::
+What is our backtest? We ran the same pipeline as described in the [method section](#method), but on the 2024 Senate races which already have known results. Here we had 4,833 personas in 33 races, and weights were `survey weight × each person’s validated 2024 turnout`. We compared the synthetic Republican share from each state with its actual 2024 result from @wiki2024. It is from this test that we got our calibration line and `{python} f"{state_sd:.1f}"`-point state error used to forecast 2026.
+
+Before any correction, the average lean (actual – synthetic) was +`{python} f"{bt_stats.filter(model='GPT-4o mini')['bias'][0]:.1f}"` points for GPT and +`{python} f"{bt_stats.filter(model='Llama 3.3 70B')['bias'][0]:.1f}"` points for Llama, meaning that real results were more Republican. The average miss was `{python} f"{bt_stats.filter(model='GPT-4o mini')['mae'][0]:.1f}"` points for GPT and `{python} f"{bt_stats.filter(model='Llama 3.3 70B')['mae'][0]:.1f}"` points for Llama. Both models called `{python} str(bt_stats.filter(model='GPT-4o mini')['right'][0])` out of 33 races correctly. Synthetic voters were too Democratic by an average of `{python} f"{lean[('GPT-4o mini', 'D')]:.1f}"` points (GPT) and `{python} f"{lean[('Llama 3.3 70B', 'D')]:.1f}"` points (Llama) in the `{python} str(n_dem_won)` races that Democrats won. Synthetic voters were too Republican by a smaller average of `{python} f"{abs(lean[('GPT-4o mini', 'R')]):.1f}"` (GPT)  and `{python} f"{abs(lean[('Llama 3.3 70B', 'R')]):.1f}"` (Llama) in the `{python} str(n_rep_won)` races Republicans won. This matches @bisbee2024, where synthetic samples show too little variation and exaggerate difference between groups. In @fig-backtest below, the solid calibration line being flatter than the dashed line visualizes this “too extreme”. The wrong calls were mostly very close races. Both models incorrectly called Nevada, Pennsylvania, Wisconsin, and Ohio, which were all races that were decided by just a few points in 2024. After correction, GPT’s average miss fell to `{python} f"{loo_mae['GPT-4o mini']:.1f}"` points, and Llama’s fell to `{python} f"{loo_mae['Llama 3.3 70B']:.1f}"` points. GPT called `{python} str(loo_right['GPT-4o mini'])` races, but Llama correctly called `{python} str(loo_right['Llama 3.3 70B'])` still. We used leave-one-out to fit a line without the state being predicted, because partly fitting a line to the state being predicted may lead us to overestimate the improvement.
+
 
 ```{python}
 #| label: fig-backtest
@@ -176,11 +213,10 @@ si.fig_backtest(sd["bt"], sd["calib"])
 si.fig_by_party(sd["by_party"])
 ```
 
-::: {.write}
-The key finding at the individual level: for partisans the models are no better than knowing party identification
-(about 94% for both models and the baseline on the same people). Pure independents are where the models are weakest
-(about 65%), as @argyle2023 also found.
-:::
+Did each synthetic voter pick the same side as the real person? For each persona and each model, we first determine which side (Republican or opposition) won the majority of the five answers from the model and then check whether the real person also voted for the same side. For pure independents, we score them on the forced-choice answers. The score is the share of people where the two votes agree. We compare against a party-line baseline, which means that everybody just votes for their party. Note that pure independents don’t have a score for this baseline, so the overall comparison leaves out pure independents and people who are “not sure”.
+
+For our ~3,060 partisans, the models performed no better than the party-line baseline. GPT had an agreement of `{python} agree_partisan['GPT-4o mini']`, Llama had an agreement of `{python} agree_partisan['Llama 3.3 70B']`, and the party-line baseline had an agreement of `{python} agree_partisan['Baseline']`. This suggests that the models add little to nothing beyond the voter’s party when it is known. For pure independents, the agreements were much lower, with `{python} agree_ind['GPT-4o mini']` for GPT and `{python} agree_ind['Llama 3.3 70B']` for Llama. In reality, `{python} n_ind_rep` pure independents responded that they voted Republican and `{python} n_ind_opp` for the opposition. Just guessing Republican would be correct about `{python} pct_ind_rep` of time. The approximate 65% from the models do better than this, but still perform much worse for either partisan group. @argyle2023 also found that when matching real voters, their silicon samples performed much better for partisans than for independents. This is likely because the persona has no “party-to-vote-for” information, which we think gives a lot of the forecast signal for partisans. See @fig-agreement above, where each marker is close together in partisan rows, and the pure independent row has its markers further to the left and has no baseline marker.
+
 
 ## The independents problem {#independents}
 
@@ -237,7 +273,7 @@ races. What that might mean (it knows the 2026 political environment, the older 
 
 ```{python}
 #| label: tbl-costs
-#| tbl-cap: "Every model call made for this project, through OpenRouter. The first 2026 run is included although DeepSeek's answers from it were unusable (its reasoning used up the reply limit) and were replaced by the rerun."
+#| tbl-cap: "Every model call made for this project, through OpenRouter. The first 2026 run is included although DeepSeek's answers from it were unusable (its reasoning used up the reply limit) and were replaced by the rerun. When: the date and the times of the first and last call of each run in 2026, Toronto time."
 display(HTML(si.booktabs(costs, ["Models", "Replies", "Cost (US$)"])))
 ```
 

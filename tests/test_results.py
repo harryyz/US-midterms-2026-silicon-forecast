@@ -15,12 +15,16 @@ import polars as pl
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location("res", ROOT / "scripts" / "01c-download_results.py")
+spec = importlib.util.spec_from_file_location(
+    "res", ROOT / "scripts" / "01c-download_results.py"
+)
 res = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(res)
 
 
-def row(year, st, party, votes, special=False, stage="gen", candidate="X", detailed=None):
+def row(
+    year, st, party, votes, special=False, stage="gen", candidate="X", detailed=None
+):
     return {"year": year, "state_po": st, "party_simplified": party, "party_detailed": detailed or party,
             "candidate": candidate, "candidatevotes": votes, "special": special, "stage": stage}  # fmt: skip
 
@@ -63,7 +67,10 @@ def test_special_and_regular_races_are_pooled_alike():
         row(2024, "NE", "REPUBLICAN", 58, special=True), row(2024, "NE", "DEMOCRAT", 35, special=True),
     ])  # fmt: skip
     out = res.build_results(raw, [2020, 2024]).sort("year")
-    assert out["dem_votes"].to_list() == [17, 35]  # Georgia pools both races; Nebraska keeps the one with a Democrat
+    assert out["dem_votes"].to_list() == [
+        17,
+        35,
+    ]  # Georgia pools both races; Nebraska keeps the one with a Democrat
     assert out["rep_votes"].to_list() == [21, 58]
     assert out["n_races"].to_list() == [2, 1]
 
@@ -72,7 +79,9 @@ def test_real_results_file_is_usable():
     path = ROOT / "data" / "01-raw_data" / "senate_results.csv"
     if not path.exists():
         pytest.skip("senate_results.csv not downloaded")
-    reg_spec = importlib.util.spec_from_file_location("reg", ROOT / "scripts" / "05-regression.py")
+    reg_spec = importlib.util.spec_from_file_location(
+        "reg", ROOT / "scripts" / "05-regression.py"
+    )
     reg = importlib.util.module_from_spec(reg_spec)
     reg_spec.loader.exec_module(reg)
     off = reg.load_official(path)

@@ -53,7 +53,9 @@ def test_infobox_parsing_cleans_names_and_maps_parties():
 def test_incumbent_matches_across_middle_initials():
     assert cand.same_person("Dan S. Sullivan", "Dan Sullivan")
     assert not cand.same_person("Darline Graham", "Lindsey Graham")
-    out = cand.parse_infobox(INFOBOX.replace("[[Ken Paxton]]", "Dan Sullivan"), "Alaska", "regular")
+    out = cand.parse_infobox(
+        INFOBOX.replace("[[Ken Paxton]]", "Dan Sullivan"), "Alaska", "regular"
+    )
     assert out[0]["is_incumbent"] and not out[1]["is_incumbent"]
 
 
@@ -61,8 +63,12 @@ def test_legislator_matching_uses_state_and_nickname():
     leg = pl.DataFrame({"last_name": ["Risch", "Smith", "Smith"], "first_name": ["James", "Adam", "Christopher"],
                         "nickname": [None, None, "Chris"], "gender": ["M"] * 3, "bioguide_id": ["R1", "S1", "S2"],
                         "state": ["ID", "WA", "WA"]})  # fmt: skip
-    assert cand.match_legislator("Jim Risch", "ID", leg)["bioguide_id"] == "R1"  # unique last name: initial is enough
-    assert cand.match_legislator("Chris Smith", "WA", leg)["bioguide_id"] == "S2"  # two Smiths: nickname decides
+    assert (
+        cand.match_legislator("Jim Risch", "ID", leg)["bioguide_id"] == "R1"
+    )  # unique last name: initial is enough
+    assert (
+        cand.match_legislator("Chris Smith", "WA", leg)["bioguide_id"] == "S2"
+    )  # two Smiths: nickname decides
     assert cand.match_legislator("Jim Risch", "WA", leg) is None  # other state
 
 
@@ -74,13 +80,25 @@ def test_real_candidates_cover_all_35_races():
     d = pl.read_csv(path)
     assert d["st"].n_unique() == 35
     major = d.filter(pl.col("party").is_in(["Democratic", "Republican"]))
-    assert (major.filter(pl.col("party") == "Republican").group_by("st").len()["len"] >= 1).all()
-    assert set(d["race"]) == {"regular", "special"} and d.filter(pl.col("race") == "special")["st"].n_unique() == 2
+    assert (
+        major.filter(pl.col("party") == "Republican").group_by("st").len()["len"] >= 1
+    ).all()
+    assert (
+        set(d["race"]) == {"regular", "special"}
+        and d.filter(pl.col("race") == "special")["st"].n_unique() == 2
+    )
 
 
 #### Cards and map ####
 def fixture_races():
-    head = pl.DataFrame({"st": ["TX", "CO", "ID"], "p_dem": [0.30, 0.52, 0.28], "p_rep": [0.55, 0.30, 0.60], "p_und": [0.15, 0.18, 0.12]})
+    head = pl.DataFrame(
+        {
+            "st": ["TX", "CO", "ID"],
+            "p_dem": [0.30, 0.52, 0.28],
+            "p_rep": [0.55, 0.30, 0.60],
+            "p_und": [0.15, 0.18, 0.12],
+        }
+    )
     cands = pl.DataFrame({
         "st": ["TX", "TX", "CO", "CO", "ID", "ID"], "party": ["Republican", "Democratic", "Republican", "Democratic", "Republican", "Other"],
         "name": ["Ken Paxton", "James Talarico", "Mark Baisley", "John Hickenlooper", "Jim Risch", "Todd Achilles"],
@@ -90,8 +108,14 @@ def fixture_races():
 
 def test_winners_follow_the_predicted_party_and_missing_nominees_are_marked():
     r = {x["st"]: x for x in fixture_races()}
-    assert (r["TX"]["winner_party"], r["TX"]["winner_name"]) == ("Republican", "Ken Paxton")
-    assert (r["CO"]["winner_party"], r["CO"]["winner_name"]) == ("Democratic", "John Hickenlooper")
+    assert (r["TX"]["winner_party"], r["TX"]["winner_name"]) == (
+        "Republican",
+        "Ken Paxton",
+    )
+    assert (r["CO"]["winner_party"], r["CO"]["winner_name"]) == (
+        "Democratic",
+        "John Hickenlooper",
+    )
     assert r["ID"]["dem"] is None and r["ID"]["winner_name"] == "Jim Risch"
     assert r["TX"]["dem2p"] == pytest.approx(0.30 / 0.85)
 
@@ -117,8 +141,17 @@ def test_winner_map_colours_by_party_and_grey_for_no_race():
     from matplotlib.colors import to_hex
     from matplotlib.patches import Polygon
 
-    fills = [to_hex(p.get_facecolor()) for p in ax.patches if isinstance(p, Polygon)]  # state shapes only
+    fills = [
+        to_hex(p.get_facecolor()) for p in ax.patches if isinstance(p, Polygon)
+    ]  # state shapes only
     assert {views.BLUE, views.RED, views.GREY} <= set(fills)
     texts = {t.get_text() for t in ax.texts}
-    assert {"Paxton", "Hickenlooper", "Risch"} <= texts  # winner's surname printed in the state
-    assert views.last_name("Marquita Bradshaw") == "Bradshaw" and views.last_name("Martin Luther King Jr.") == "King"
+    assert {
+        "Paxton",
+        "Hickenlooper",
+        "Risch",
+    } <= texts  # winner's surname printed in the state
+    assert (
+        views.last_name("Marquita Bradshaw") == "Bradshaw"
+        and views.last_name("Martin Luther King Jr.") == "King"
+    )

@@ -26,3 +26,5 @@ data/01-raw_data/cumulative_*
 
 # Intermediate query batches (combined into responses_*.parquet)
 data/02-analysis_data/parts_*/
+# R history files
+.Rhistory

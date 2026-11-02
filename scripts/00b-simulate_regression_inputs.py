@@ -41,7 +41,15 @@ STATES = [
     "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
 ]  # fmt: skip
 # National swing toward Democrats by year (logit scale)
-SWING = {2012: 0.2, 2014: -0.3, 2016: -0.1, 2018: 0.3, 2020: 0.1, 2022: 0.1, 2024: -0.15}
+SWING = {
+    2012: 0.2,
+    2014: -0.3,
+    2016: -0.1,
+    2018: 0.3,
+    2020: 0.1,
+    2022: 0.1,
+    2024: -0.15,
+}
 
 
 def logistic(x):
@@ -71,18 +79,22 @@ def simulate(out_dir: Path = OUT_DIR, seed: int = SEED) -> None:
     for y in YEARS:
         for i, s in enumerate(STATES):
             n = N_PER_STATE
-            race = rng.choice(
-                ["White", "Black", "Hispanic", "Asian"], n, p=race_mix[s]
-            )
+            race = rng.choice(["White", "Black", "Hispanic", "Asian"], n, p=race_mix[s])
             gender = np.where(rng.random(n) < male[i], "Male", "Female")
             educ = np.where(
                 rng.random(n) < college[i],
                 rng.choice(["4-Year", "Post-Grad"], n),
-                rng.choice(["No HS", "High School Graduate", "Some College", "2-Year"], n),
+                rng.choice(
+                    ["No HS", "High School Graduate", "Some College", "2-Year"], n
+                ),
             )
             age = rng.integers(18, 90, n)
             # Party ID: lean, race, and education shift the odds of Democrat
-            z = 0.9 * lean[i] - 0.7 * (race == "White") + 0.3 * np.isin(educ, ["4-Year", "Post-Grad"])
+            z = (
+                0.9 * lean[i]
+                - 0.7 * (race == "White")
+                + 0.3 * np.isin(educ, ["4-Year", "Post-Grad"])
+            )
             p_ind = 0.18
             p_dem = (1 - p_ind) * logistic(z)
             u = rng.random(n)
@@ -99,12 +111,18 @@ def simulate(out_dir: Path = OUT_DIR, seed: int = SEED) -> None:
             pd = logistic(util)
             p_und = np.where(pid3 == "Independent", 0.35, 0.06)
             r = rng.random(n)
-            choice = np.where(r < p_und, "und", np.where(rng.random(n) < pd, "dem", "rep"))
+            choice = np.where(
+                r < p_und, "und", np.where(rng.random(n) < pd, "dem", "rep")
+            )
             has_race = s in races[y]
             intent = np.where(
-                choice == "dem", "[Democrat / Candidate 1]",
-                np.where(choice == "rep", "[Republican / Candidate 2]",
-                         rng.choice(["Not Sure", "No One", "[Other / Candidate 3]"], n)),  # fmt: skip
+                choice == "dem",
+                "[Democrat / Candidate 1]",
+                np.where(
+                    choice == "rep",
+                    "[Republican / Candidate 2]",
+                    rng.choice(["Not Sure", "No One", "[Other / Candidate 3]"], n),
+                ),  # fmt: skip
             ).astype(object)
             if not has_race:
                 intent = np.full(n, None, dtype=object)
@@ -125,8 +143,16 @@ def simulate(out_dir: Path = OUT_DIR, seed: int = SEED) -> None:
             if y in PRES_YEARS:
                 m = 20000
                 pid = rng.choice(["D", "R", "I"], m, p=[p_dem.mean(), (1 - p_ind) - p_dem.mean(), p_ind])  # fmt: skip
-                ut = 2.4 * (pid == "D") - 2.4 * (pid == "R") + 0.3 * lean[i] + 0.6 * SWING[y] + rng.normal(0, 0.5, m)
-                d2p = float(np.clip(logistic(ut).mean() + rng.normal(0, 0.01), 0.05, 0.95))
+                ut = (
+                    2.4 * (pid == "D")
+                    - 2.4 * (pid == "R")
+                    + 0.3 * lean[i]
+                    + 0.6 * SWING[y]
+                    + rng.normal(0, 0.5, m)
+                )
+                d2p = float(
+                    np.clip(logistic(ut).mean() + rng.normal(0, 0.01), 0.05, 0.95)
+                )
                 total = int(rng.integers(8e5, 9e6))
                 pres.append({"year": y, "st": s, "dem_votes": int(total * 0.98 * d2p),
                              "rep_votes": int(total * 0.98 * (1 - d2p)), "other_votes": int(total * 0.02)})  # fmt: skip
@@ -141,10 +167,13 @@ def simulate(out_dir: Path = OUT_DIR, seed: int = SEED) -> None:
                 total = int(rng.integers(8e5, 9e6))
                 dem2p = float(np.clip(dem2p + rng.normal(0, 0.01), 0.05, 0.95))
                 truth.append(
-                    {"year": y, "st": s,
-                     "dem_votes": int(total * 0.97 * dem2p),
-                     "rep_votes": int(total * 0.97 * (1 - dem2p)),
-                     "other_votes": int(total * 0.03)}  # fmt: skip
+                    {
+                        "year": y,
+                        "st": s,
+                        "dem_votes": int(total * 0.97 * dem2p),
+                        "rep_votes": int(total * 0.97 * (1 - dem2p)),
+                        "other_votes": int(total * 0.03),
+                    }  # fmt: skip
                 )
 
     pl.concat(resp).write_parquet(out_dir / "simulated_ces.parquet")
@@ -156,14 +185,19 @@ def simulate(out_dir: Path = OUT_DIR, seed: int = SEED) -> None:
     for y in YEARS:
         for i, s in enumerate(STATES):
             acs.append(
-                {"acs_year": y, "st": s,
-                 "acs_male": male[i] + rng.normal(0, 0.002),
-                 "acs_white": white[i] + rng.normal(0, 0.01),
-                 "acs_black": (1 - white[i]) * 0.45 + rng.normal(0, 0.01),
-                 "acs_hispanic": (1 - white[i]) * 0.4 + rng.normal(0, 0.01),
-                 "acs_college": college[i] + rng.normal(0, 0.01),
-                 "acs_median_age": 38 + rng.normal(0, 1.5),
-                 "acs_log_income": 11.1 + 0.4 * (college[i] - 0.33) / 0.05 * 0.1 + rng.normal(0, 0.08)}  # fmt: skip
+                {
+                    "acs_year": y,
+                    "st": s,
+                    "acs_male": male[i] + rng.normal(0, 0.002),
+                    "acs_white": white[i] + rng.normal(0, 0.01),
+                    "acs_black": (1 - white[i]) * 0.45 + rng.normal(0, 0.01),
+                    "acs_hispanic": (1 - white[i]) * 0.4 + rng.normal(0, 0.01),
+                    "acs_college": college[i] + rng.normal(0, 0.01),
+                    "acs_median_age": 38 + rng.normal(0, 1.5),
+                    "acs_log_income": 11.1
+                    + 0.4 * (college[i] - 0.33) / 0.05 * 0.1
+                    + rng.normal(0, 0.08),
+                }  # fmt: skip
             )
     pl.DataFrame(acs).write_parquet(out_dir / "simulated_acs.parquet")
     print(f"Simulated inputs written to {out_dir}")

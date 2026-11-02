@@ -16,7 +16,9 @@ import polars as pl
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-spec = importlib.util.spec_from_file_location("reg", ROOT / "scripts" / "05-regression.py")
+spec = importlib.util.spec_from_file_location(
+    "reg", ROOT / "scripts" / "05-regression.py"
+)
 reg = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(reg)
 
@@ -58,7 +60,9 @@ def test_fit_predict_recovers_linear_signal():
     rng = np.random.default_rng(0)
     x = rng.uniform(0, 1, 60)
     dem = 0.2 + 0.5 * x
-    df = pl.DataFrame({"x": x, "dem": dem, "rep": 0.6 - 0.5 * x, "und": np.full(60, 0.2)})
+    df = pl.DataFrame(
+        {"x": x, "dem": dem, "rep": 0.6 - 0.5 * x, "und": np.full(60, 0.2)}
+    )
     pred = reg.fit_predict(df[:50], df[50:], ["x"])
     assert np.abs(pred[:, 0] - df[50:]["dem"].to_numpy()).max() < 0.03
     assert pred.sum(axis=1) == pytest.approx(1.0)
@@ -98,7 +102,9 @@ def real():
     if not CES_PATH.exists():
         pytest.skip("full CES extract not present")
     ces = pl.read_parquet(CES_PATH)
-    table = reg.build_training_table(ces, lag=0)  # the sample file has no pre-2022 cycles
+    table = reg.build_training_table(
+        ces, lag=0
+    )  # the sample file has no pre-2022 cycles
     target = reg.build_target_table(ces)
     fsets = {"ces": reg.CES_FEATURES + ["midterm"]}
     return table, target, fsets
@@ -106,8 +112,13 @@ def real():
 
 def test_training_table_has_no_nulls(real):
     table, _, fsets = real
-    assert table.select(fsets["ces"] + reg.CLASSES).null_count().sum_horizontal()[0] == 0
-    assert set(table["year"].unique()) == {2022, 2024}  # feature_year equals year at lag 0
+    assert (
+        table.select(fsets["ces"] + reg.CLASSES).null_count().sum_horizontal()[0] == 0
+    )
+    assert set(table["year"].unique()) == {
+        2022,
+        2024,
+    }  # feature_year equals year at lag 0
 
 
 def test_forecast_covers_every_2026_race(real):
@@ -126,14 +137,21 @@ def test_model_beats_mean_baseline_out_of_sample(real):
     m = reg.evaluate({"contemporaneous": table}, fsets, reg.train_sets([2022, 2024]))
     # 3 sets x leave-one-state-out + forward-chaining only where an earlier cycle exists
     assert set(m["scheme"]) == {reg.LOSO, reg.FORWARD}
-    assert m.filter(pl.col("scheme") == reg.FORWARD)["train"].to_list() == ["2022", "2022+2024"]
+    assert m.filter(pl.col("scheme") == reg.FORWARD)["train"].to_list() == [
+        "2022",
+        "2022+2024",
+    ]
     assert (m["mae_dem"] < m["baseline_mae_dem"]).all()
     assert (m["winner_acc_ces"] > 0.7).all()
 
 
 #### Training sets and simulated end-to-end ####
 def test_train_sets_grow_with_available_years():
-    assert reg.train_sets([2022, 2024]) == {"2022": [2022], "2024": [2024], "2022+2024": [2022, 2024]}
+    assert reg.train_sets([2022, 2024]) == {
+        "2022": [2022],
+        "2024": [2024],
+        "2022+2024": [2022, 2024],
+    }
     wide = reg.train_sets([2014, 2016, 2018, 2020, 2022, 2024])
     assert wide["2014+2016+2018"] == [2014, 2016, 2018]
     assert wide["midterms"] == [2014, 2018, 2022]
@@ -151,11 +169,15 @@ def test_simulated_pipeline_runs_and_beats_baseline(tmp_path, monkeypatch):
     assert (metrics["mae_dem"] < 0.5 * metrics["baseline_mae_dem"]).all()
     assert (metrics["official_winner_acc"] > 0.8).all()
     assert preds["st"].n_unique() == len(reg.SENATE_STATES_2026)
-    assert (preds["p_dem"] + preds["p_rep"] + preds["p_und"]).to_numpy() == pytest.approx(1.0)
+    assert (
+        preds["p_dem"] + preds["p_rep"] + preds["p_und"]
+    ).to_numpy() == pytest.approx(1.0)
 
 
 def run_simulated(tmp_path, monkeypatch):
-    sim = importlib.util.spec_from_file_location("sim", ROOT / "scripts" / "00b-simulate_regression_inputs.py")
+    sim = importlib.util.spec_from_file_location(
+        "sim", ROOT / "scripts" / "00b-simulate_regression_inputs.py"
+    )
     mod = importlib.util.module_from_spec(sim)
     sim.loader.exec_module(mod)
     mod.simulate(tmp_path / "data" / "00-simulated_data")
@@ -169,9 +191,21 @@ def toy_panel() -> pl.DataFrame:
     rows = []
     for y in (2014, 2016, 2018):
         for st, n_rep in (("AA", (y - 2012) // 2), ("BB", 5)):
-            rows += [{"year": y, "st": st, "weight": 1.0, "gender": "Male", "race": "White", "educ": "4-Year",
-                      "age": 40, "pid3": "Republican" if i < n_rep else "Democrat", "pid7": "Strong Democrat",
-                      "intent_sen": "[Democrat / Candidate 1]" if y > 2014 else None} for i in range(10)]
+            rows += [
+                {
+                    "year": y,
+                    "st": st,
+                    "weight": 1.0,
+                    "gender": "Male",
+                    "race": "White",
+                    "educ": "4-Year",
+                    "age": 40,
+                    "pid3": "Republican" if i < n_rep else "Democrat",
+                    "pid7": "Strong Democrat",
+                    "intent_sen": "[Democrat / Candidate 1]" if y > 2014 else None,
+                }
+                for i in range(10)
+            ]
     return pl.DataFrame(rows)  # fmt: skip
 
 
@@ -182,14 +216,22 @@ def test_lagged_features_come_from_two_years_earlier():
     assert set(lagged["year"].unique()) == {2016, 2018}  # 2014 has no 2012 features
     # AA's Republican ID share is 0.1 in 2014, 0.2 in 2016, 0.3 in 2018
     aa = lagged.filter(pl.col("st") == "AA").sort("year")
-    assert aa["ces_rep"].to_list() == pytest.approx([0.1, 0.2])  # 2016 row carries 2014's value
-    same_year = reg.build_training_table(ces, lag=0).filter(pl.col("st") == "AA").sort("year")
-    assert same_year["ces_rep"].to_list() == pytest.approx([0.2, 0.3])  # the leaky design
+    assert aa["ces_rep"].to_list() == pytest.approx(
+        [0.1, 0.2]
+    )  # 2016 row carries 2014's value
+    same_year = (
+        reg.build_training_table(ces, lag=0).filter(pl.col("st") == "AA").sort("year")
+    )
+    assert same_year["ces_rep"].to_list() == pytest.approx(
+        [0.2, 0.3]
+    )  # the leaky design
 
 
 def test_prior_results_use_only_earlier_years():
     table = pl.DataFrame({"st": ["AA", "AA"], "year": [2018, 2020]})
-    res = pl.DataFrame({"st": ["AA", "AA", "AA"], "year": [2016, 2018, 2020], "dem2p": [0.4, 0.5, 0.6]})
+    res = pl.DataFrame(
+        {"st": ["AA", "AA", "AA"], "year": [2016, 2018, 2020], "dem2p": [0.4, 0.5, 0.6]}
+    )
     out = reg.add_prior(table, res, "prev").sort("year")
     assert out["prev"].to_list() == [0.4, 0.5]  # a year never sees its own result
 
@@ -200,16 +242,41 @@ def test_forward_chaining_never_trains_on_later_cycles():
     for y in (2014, 2016, 2018, 2020):
         for i in range(20):
             x = rng.uniform()
-            rows.append({"year": y, "st": f"S{i}", "x": x, "dem": 0.3 + 0.3 * x, "rep": 0.6 - 0.3 * x, "und": 0.1})
+            rows.append(
+                {
+                    "year": y,
+                    "st": f"S{i}",
+                    "x": x,
+                    "dem": 0.3 + 0.3 * x,
+                    "rep": 0.6 - 0.3 * x,
+                    "und": 0.1,
+                }
+            )
     table = pl.DataFrame(rows)
     test, pred, base = reg.forward_chaining(table, ["x"], [2014, 2016, 2018, 2020])
-    assert sorted(set(test["year"].to_list())) == [2016, 2018, 2020]  # first cycle is never a test cycle
+    assert sorted(set(test["year"].to_list())) == [
+        2016,
+        2018,
+        2020,
+    ]  # first cycle is never a test cycle
     single = reg.forward_chaining(table, ["x"], [2018])
-    assert set(single[0]["year"].to_list()) == {2020}  # 2018-only model scores only the future
+    assert set(single[0]["year"].to_list()) == {
+        2020
+    }  # 2018-only model scores only the future
 
 
 def test_fold_baseline_excludes_the_held_out_state():
-    rows = [{"year": 2020, "st": f"S{i}", "x": 0.0, "dem": 0.9 if i == 0 else 0.1, "rep": 0.1, "und": 0.0} for i in range(12)]
+    rows = [
+        {
+            "year": 2020,
+            "st": f"S{i}",
+            "x": 0.0,
+            "dem": 0.9 if i == 0 else 0.1,
+            "rep": 0.1,
+            "und": 0.0,
+        }
+        for i in range(12)
+    ]
     table = pl.DataFrame(rows)
     _, base = reg.leave_one_state_out(table, ["x"])
     # held-out S0 (dem 0.9) must not be in its own baseline: the mean of the other 11 is 0.1
@@ -223,15 +290,25 @@ def test_baselines_are_defined_and_use_only_history(tmp_path, monkeypatch):
     summary = reg.summarise_comparison(cmp)
     # common rows: every method is scored on the same number of state-races
     assert summary["n"].n_unique() == 1
-    assert summary.filter(pl.col("method") == "baseline: majority class")["mae_dem2p"].is_null().all()
-    assert summary.filter(pl.col("method") == "baseline: mean share")["winner_acc"][0] < 0.9
+    assert (
+        summary.filter(pl.col("method") == "baseline: majority class")["mae_dem2p"]
+        .is_null()
+        .all()
+    )
+    assert (
+        summary.filter(pl.col("method") == "baseline: mean share")["winner_acc"][0]
+        < 0.9
+    )
     assert out["baseline_forecast"]["st"].n_unique() == len(reg.SENATE_STATES_2026)
 
 
 def test_prior_features_fall_back_to_president_and_flag_it():
     table = pl.DataFrame({"prev_senate": [0.6, None], "prev_president": [0.5, 0.4]})
     out = reg.add_prior_features(table)
-    assert out["prev_senate_f"].to_list() == [0.6, 0.4]  # missing Senate share -> presidential share
+    assert out["prev_senate_f"].to_list() == [
+        0.6,
+        0.4,
+    ]  # missing Senate share -> presidential share
     assert out["has_prev_senate"].to_list() == [1.0, 0.0]
 
 
@@ -239,29 +316,48 @@ def test_prior_feature_sets_exist_and_forecast_every_race(tmp_path, monkeypatch)
     out = run_simulated(tmp_path, monkeypatch)
     f = out["preds"].filter(pl.col("features").is_in(["prior", "ces+prior"]))
     assert f["features"].n_unique() == 2
-    assert f.group_by("features", "train").agg(n=pl.col("st").n_unique())["n"].to_list() == [len(reg.SENATE_STATES_2026)] * (2 * len(out["sets"]))
+    assert f.group_by("features", "train").agg(n=pl.col("st").n_unique())[
+        "n"
+    ].to_list() == [len(reg.SENATE_STATES_2026)] * (2 * len(out["sets"]))
     # the simulated state lean persists, so previous results should call winners well
-    fwd = out["metrics"].filter(pl.col("scheme") == reg.FORWARD, pl.col("timing") == "lagged", pl.col("features") == "prior", pl.col("train") == "all")
+    fwd = out["metrics"].filter(
+        pl.col("scheme") == reg.FORWARD,
+        pl.col("timing") == "lagged",
+        pl.col("features") == "prior",
+        pl.col("train") == "all",
+    )
     assert fwd["official_winner_acc"][0] > 0.85
     # targets never feed the priors: no prior feature equals the same row's certified share
     tbl = out["tables"]["lagged"]
     assert not (tbl["prev_president"] == tbl["official_dem2p"]).any()
 
 
-def test_model_is_selected_on_validation_and_scored_on_untouched_holdout(tmp_path, monkeypatch):
+def test_model_is_selected_on_validation_and_scored_on_untouched_holdout(
+    tmp_path, monkeypatch
+):
     out = run_simulated(tmp_path, monkeypatch)
     sel = out["selection"]
     years = sorted(out["tables"]["lagged"]["year"].unique().to_list())
     holdout = str(years[-1])
-    val_years = set(sel.filter(pl.col("phase") == "validation")["test_years"].str.split(",").explode())
+    val_years = set(
+        sel.filter(pl.col("phase") == "validation")["test_years"]
+        .str.split(",")
+        .explode()
+    )
     assert holdout not in val_years  # the holdout never enters validation
     assert set(sel.filter(pl.col("phase") == "holdout")["test_years"]) == {holdout}
     chosen = sel.filter(pl.col("selected"), pl.col("phase") == "validation")
     assert chosen.height == 1
-    val = sel.filter(pl.col("phase") == "validation", pl.col("window") == reg.HEADLINE_WINDOW)  # only these are eligible
-    assert chosen["official_mae_dem2p"][0] == val["official_mae_dem2p"].min()  # lowest validation error
+    val = sel.filter(
+        pl.col("phase") == "validation", pl.col("window") == reg.HEADLINE_WINDOW
+    )  # only these are eligible
+    assert (
+        chosen["official_mae_dem2p"][0] == val["official_mae_dem2p"].min()
+    )  # lowest validation error
     fs, window = out["selected"]
-    assert fs in out["feature_sets"] and window == "all"  # headline trains on every cycle by decision
+    assert (
+        fs in out["feature_sets"] and window == "all"
+    )  # headline trains on every cycle by decision
     assert out["headline_train"] == "all"
     assert out["headline_train"] in set(out["preds"]["train"])
     assert out["headline_train"] in out["sets"]
@@ -274,8 +370,12 @@ def test_midterm_only_models_train_on_midterm_cycles_only(tmp_path, monkeypatch)
     only = mt.filter(pl.col("model") == "midterm-only", pl.col("test_year") != "pooled")
     for train_years, test_year in zip(only["train_years"], only["test_year"]):
         used = [int(y) for y in train_years.split(",")]
-        assert all(y in mids and y < int(test_year) for y in used)  # midterms, strictly earlier
-    assert {int(y) for y in only["test_year"]} == set(mids[1:])  # the first midterm is never a test cycle
+        assert all(
+            y in mids and y < int(test_year) for y in used
+        )  # midterms, strictly earlier
+    assert {int(y) for y in only["test_year"]} == set(
+        mids[1:]
+    )  # the first midterm is never a test cycle
     assert set(mt["model"]) == {"midterm-only", "all cycles"}
     assert (mt.filter(pl.col("test_year") == "pooled")["n"] > 0).all()
     # the 2026 forecast from midterm-only models exists for every race and feature set
@@ -295,15 +395,31 @@ def test_direct_model_recovers_logit_share_and_returns_a_valid_pair():
     assert (pred[:, 0] + pred[:, 1] == pytest.approx(1.0)) and (pred[:, 2] == 0).all()
 
 
-def test_direct_model_runs_on_simulated_data_and_covers_every_race(tmp_path, monkeypatch):
+def test_direct_model_runs_on_simulated_data_and_covers_every_race(
+    tmp_path, monkeypatch
+):
     out = run_simulated(tmp_path, monkeypatch)
     dm, dp = out["direct_metrics"], out["direct_preds"]
-    assert set(dm["features"]) == set(out["feature_sets"]) and {reg.LOSO, reg.FORWARD} == set(dm["scheme"])
+    assert set(dm["features"]) == set(out["feature_sets"]) and {
+        reg.LOSO,
+        reg.FORWARD,
+    } == set(dm["scheme"])
     assert dm["mae_dem"].is_null().all()  # survey-only metrics do not apply
     assert dm["official_mae_dem2p"].is_not_null().all()
-    assert dp.group_by("features", "train").agg(n=pl.col("st").n_unique())["n"].to_list() == [len(reg.SENATE_STATES_2026)] * (len(out["feature_sets"]) * len(out["sets"]))
+    assert dp.group_by("features", "train").agg(n=pl.col("st").n_unique())[
+        "n"
+    ].to_list() == [len(reg.SENATE_STATES_2026)] * (
+        len(out["feature_sets"]) * len(out["sets"])
+    )
     assert dp["dem2p"].is_between(0, 1).all()
-    assert any(m.startswith("ridge direct two-party") for m in out["comparison"]["method"].unique())
+    assert any(
+        m.startswith("ridge direct two-party")
+        for m in out["comparison"]["method"].unique()
+    )
     # simulated lean persists, so the direct model should call most winners
-    fwd = dm.filter(pl.col("scheme") == reg.FORWARD, pl.col("timing") == "lagged", pl.col("train") == "all")
+    fwd = dm.filter(
+        pl.col("scheme") == reg.FORWARD,
+        pl.col("timing") == "lagged",
+        pl.col("train") == "all",
+    )
     assert (fwd["official_winner_acc"] > 0.85).all()

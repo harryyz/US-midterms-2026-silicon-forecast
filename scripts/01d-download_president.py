@@ -46,7 +46,9 @@ def build_president(raw: pl.DataFrame, years: list[int] = YEARS) -> pl.DataFrame
 def download(path: Path) -> pl.DataFrame:
     if not path.exists():
         url = f"https://dataverse.harvard.edu/api/access/datafile/{FILE_ID}"
-        r = httpx.get(url, params={"format": "original"}, timeout=120, follow_redirects=True)
+        r = httpx.get(
+            url, params={"format": "original"}, timeout=120, follow_redirects=True
+        )
         r.raise_for_status()
         path.write_bytes(r.content)
     return pl.read_csv(path, infer_schema_length=10000)

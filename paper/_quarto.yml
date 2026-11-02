@@ -10,7 +10,6 @@ project:
 website:
   title: "Senate 2026 forecast"
   page-footer:
-    # TODO: add the third author if there is one
     center: "Bolong Tang · Yi Zhi (Harry) Zhang · [Code and data on GitHub](https://github.com/harryyz/US-midterms-2026-silicon-forecast)"
 
 format:

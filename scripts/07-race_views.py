@@ -51,7 +51,9 @@ ABBR_NAME = {v: k for k, v in STATE_ABBR.items()}
 
 #### Join forecast and candidates ####
 def last_name(name: str) -> str:
-    parts = [p for p in name.replace('"', "").split() if p.lower().strip(".") not in SUFFIXES]
+    parts = [
+        p for p in name.replace('"', "").split() if p.lower().strip(".") not in SUFFIXES
+    ]
     return parts[-1] if parts else name
 
 
@@ -60,7 +62,9 @@ def initials(name: str) -> str:
     return (parts[0][0] + parts[-1][0]).upper() if len(parts) > 1 else name[:2].upper()
 
 
-def load_candidates(path: Path = ROOT / "data" / "01-raw_data" / "candidates_2026.csv") -> pl.DataFrame:
+def load_candidates(
+    path: Path = ROOT / "data" / "01-raw_data" / "candidates_2026.csv",
+) -> pl.DataFrame:
     return pl.read_csv(path)
 
 
@@ -70,7 +74,14 @@ def build_races(head: pl.DataFrame, cands: pl.DataFrame) -> list[dict]:
     races = []
     for r in head.sort("st").iter_rows(named=True):
         c = cands.filter(pl.col("st") == r["st"])
-        pick = lambda party: next(iter(c.filter(pl.col("party") == party).sort("is_incumbent", descending=True).iter_rows(named=True)), None)  # noqa: E731
+        pick = lambda party: next(
+            iter(
+                c.filter(pl.col("party") == party)
+                .sort("is_incumbent", descending=True)
+                .iter_rows(named=True)
+            ),
+            None,
+        )
         dem, rep = pick("Democratic"), pick("Republican")
         others = c.filter(pl.col("party") == "Other")["name"].to_list()
         dem2p = r["p_dem"] / (r["p_dem"] + r["p_rep"])
@@ -89,7 +100,10 @@ def build_races(head: pl.DataFrame, cands: pl.DataFrame) -> list[dict]:
 def photo_uri(photo_file: str | None, photo_dir: Path) -> str | None:
     if not photo_file or not (photo_dir / photo_file).exists():
         return None
-    return "data:image/jpeg;base64," + base64.b64encode((photo_dir / photo_file).read_bytes()).decode()
+    return (
+        "data:image/jpeg;base64,"
+        + base64.b64encode((photo_dir / photo_file).read_bytes()).decode()
+    )
 
 
 CSS = """
@@ -121,7 +135,9 @@ CSS = """
 """
 
 
-def person_html(c: dict | None, party: str, big: bool, photo_dir: Path, label: str) -> str:
+def person_html(
+    c: dict | None, party: str, big: bool, photo_dir: Path, label: str
+) -> str:
     colour = BLUE if party == "Democratic" else RED
     size = "big" if big else "small"
     if c is None:
@@ -131,28 +147,51 @@ def person_html(c: dict | None, party: str, big: bool, photo_dir: Path, label: s
         uri = photo_uri(c.get("photo_file"), photo_dir)
         pic = (f'<img class="pic {size}" style="--c:{colour}" src="{uri}" alt="Official portrait of {html.escape(c["name"])}">' if uri
                else f'<span class="badge {size}" style="--c:{colour}" role="img" aria-label="{html.escape(c["name"])}">{html.escape(initials(c["name"]))}</span>')  # fmt: skip
-        name, tag = html.escape(c["name"]), ("Incumbent · " if c.get("is_incumbent") else "") + label
+        name, tag = (
+            html.escape(c["name"]),
+            ("Incumbent · " if c.get("is_incumbent") else "") + label,
+        )
     return f'<div class="person{" win" if big else ""}">{pic}<div class="nm">{name}</div><span class="tag">{html.escape(tag)}</span></div>'
 
 
-def cards_html(races: list[dict], photo_dir: Path = ROOT / "data" / "01-raw_data" / "photos") -> str:
+def cards_html(
+    races: list[dict], photo_dir: Path = ROOT / "data" / "01-raw_data" / "photos"
+) -> str:
     """A grid of race cards, three to a line."""
     out = [CSS, '<div class="race-grid">']
     for r in races:
         d_win = r["winner_party"] == "Democratic"
-        dem_html = person_html(r["dem"], "Democratic", d_win, photo_dir, r.get("opp_label", "Democratic"))
-        rep_html = person_html(r["rep"], "Republican", not d_win, photo_dir, "Republican")
+        dem_html = person_html(
+            r["dem"], "Democratic", d_win, photo_dir, r.get("opp_label", "Democratic")
+        )
+        rep_html = person_html(
+            r["rep"], "Republican", not d_win, photo_dir, "Republican"
+        )
         d, rr = 100 * r["dem2p"], 100 * (1 - r["dem2p"])
-        other = f" · independent: {html.escape(', '.join(r['others'][:2]))}" if r["others"] and (r["dem"] is None or r["rep"] is None) else ""
+        other = (
+            f" · independent: {html.escape(', '.join(r['others'][:2]))}"
+            if r["others"] and (r["dem"] is None or r["rep"] is None)
+            else ""
+        )
         out.append(
             f'<div class="race-card" aria-label="{html.escape(r["state"])} Senate race">'
-            f'<h4>{html.escape(r["state"])}<small>Predicted winner: {html.escape(r["winner_name"])} ({r.get("tag") or ("D" if d_win else "R")})</small></h4>'
+            f"<h4>{html.escape(r['state'])}<small>Predicted winner: {html.escape(r['winner_name'])} ({r.get('tag') or ('D' if d_win else 'R')})</small></h4>"
             f'<div class="people">{dem_html}{rep_html}</div>'
             f'<div class="bar" role="img" aria-label="Democratic {d:.1f} percent, Republican {rr:.1f} percent of the two-party vote">'
             f'<span class="d" style="width:{d:.2f}%">{r.get("bar_left", "D")} {d:.1f}%</span><span class="gap"></span><span class="r" style="width:{rr:.2f}%">R {rr:.1f}%</span></div>'
-            + ("".join(f'<div class="meta"><span>{html.escape(m)}</span></div>' for m in r["meta"]) if r.get("meta") else
-               f'<div class="meta"><span>Including undecided/other: D {100*r["p_dem"]:.0f}% · R {100*r["p_rep"]:.0f}% · U {100*r["p_und"]:.0f}%</span></div>')
-            + (f'<div class="meta"><span>{other[3:]}</span></div>' if other and not r.get("meta") else "")
+            + (
+                "".join(
+                    f'<div class="meta"><span>{html.escape(m)}</span></div>'
+                    for m in r["meta"]
+                )
+                if r.get("meta")
+                else f'<div class="meta"><span>Including undecided/other: D {100 * r["p_dem"]:.0f}% · R {100 * r["p_rep"]:.0f}% · U {100 * r["p_und"]:.0f}%</span></div>'
+            )
+            + (
+                f'<div class="meta"><span>{other[3:]}</span></div>'
+                if other and not r.get("meta")
+                else ""
+            )
             + "</div>"
         )
     out.append("</div>")
@@ -160,9 +199,18 @@ def cards_html(races: list[dict], photo_dir: Path = ROOT / "data" / "01-raw_data
 
 
 #### Map ####
-def ensure_geojson(path: Path = ROOT / "data" / "01-raw_data" / "us-states.geojson") -> dict:
+def ensure_geojson(
+    path: Path = ROOT / "data" / "01-raw_data" / "us-states.geojson",
+) -> dict:
     if not path.exists():
-        path.write_bytes(urllib.request.urlopen(urllib.request.Request(GEOJSON_URL, headers={"User-Agent": "Mozilla/5.0"}), timeout=60).read())
+        path.write_bytes(
+            urllib.request.urlopen(
+                urllib.request.Request(
+                    GEOJSON_URL, headers={"User-Agent": "Mozilla/5.0"}
+                ),
+                timeout=60,
+            ).read()
+        )
     return json.loads(path.read_text())
 
 
@@ -183,13 +231,21 @@ REGIONS = {  # state -> (projection parameters, scale, anchor as fractions of th
     "Hawaii": (dict(lon0=-157, lat0=3, p1=8, p2=18), 1.0, (0.27, -0.12)),
 }
 # Small states labelled in the Atlantic with a leader line: abbr -> (dx, dy) as fractions of the box
-OUTSIDE = {"NH": (0.075, 0.05), "MA": (0.095, 0.0), "RI": (0.085, -0.04), "DE": (0.075, -0.015), "NJ": (0.07, -0.025)}
+OUTSIDE = {
+    "NH": (0.075, 0.05),
+    "MA": (0.095, 0.0),
+    "RI": (0.085, -0.04),
+    "DE": (0.075, -0.015),
+    "NJ": (0.07, -0.025),
+}
 
 
 def rings(geom: dict) -> list[np.ndarray]:
     polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
     out = [np.array(p[0]) for p in polys]  # outer ring of each polygon
-    return [r for r in out if r[:, 0].max() < 0]  # drop Aleutian rings across the antimeridian (they smear the map)
+    return [
+        r for r in out if r[:, 0].max() < 0
+    ]  # drop Aleutian rings across the antimeridian (they smear the map)
 
 
 def project_states(geo: dict) -> dict[str, list[np.ndarray]]:
@@ -200,7 +256,12 @@ def project_states(geo: dict) -> dict[str, list[np.ndarray]]:
         if name == "Puerto Rico":
             continue
         params, scale, _ = REGIONS.get(name, (dict(), 1.0, None))
-        proj[name] = [np.column_stack([a * scale, b * scale]) for a, b in (albers(r[:, 0], r[:, 1], **params) for r in rings(f["geometry"]))]
+        proj[name] = [
+            np.column_stack([a * scale, b * scale])
+            for a, b in (
+                albers(r[:, 0], r[:, 1], **params) for r in rings(f["geometry"])
+            )
+        ]
     lower = np.vstack([r for n, rs in proj.items() if n not in REGIONS for r in rs])
     (x0, y0), (x1, y1) = lower.min(0), lower.max(0)
     w, h = x1 - x0, y1 - y0
@@ -220,8 +281,16 @@ def centroid(ring: np.ndarray) -> np.ndarray:
     return np.array([((x + x2) * cross).sum(), ((y + y2) * cross).sum()]) / (6 * a)
 
 
-def winner_map(races: list[dict], geo: dict | None = None, title: str = "2026 U.S. Senate: predicted winner in each state",
-               legend: tuple = ("Predicted Democratic win", "Predicted Republican win", "No Senate race in 2026")):
+def winner_map(
+    races: list[dict],
+    geo: dict | None = None,
+    title: str = "2026 U.S. Senate: predicted winner in each state",
+    legend: tuple = (
+        "Predicted Democratic win",
+        "Predicted Republican win",
+        "No Senate race in 2026",
+    ),
+):
     """Matplotlib figure: red Republican win, blue Democratic win, grey no race; winner's name in each state."""
     import matplotlib
 
@@ -238,9 +307,21 @@ def winner_map(races: list[dict], geo: dict | None = None, title: str = "2026 U.
     fig, ax = plt.subplots(figsize=(10, 6.6), dpi=110)
     for name, rs in proj.items():
         race = by_name.get(name)
-        fill = GREY if race is None else (BLUE if race["winner_party"] == "Democratic" else RED)
+        fill = (
+            GREY
+            if race is None
+            else (BLUE if race["winner_party"] == "Democratic" else RED)
+        )
         for ring in rs:
-            ax.add_patch(Polygon(ring, closed=True, facecolor=fill, edgecolor="#fcfcfb", linewidth=0.8))
+            ax.add_patch(
+                Polygon(
+                    ring,
+                    closed=True,
+                    facecolor=fill,
+                    edgecolor="#fcfcfb",
+                    linewidth=0.8,
+                )
+            )
     for name, race in by_name.items():
         if name not in proj:
             continue
@@ -251,17 +332,54 @@ def winner_map(races: list[dict], geo: dict | None = None, title: str = "2026 U.
         if ab in OUTSIDE:
             dx, dy = OUTSIDE[ab]
             tx, ty = c[0] + dx * w, c[1] + dy * h
-            ax.plot([c[0], tx - 0.004 * w], [c[1], ty], color=INK2, linewidth=0.7, zorder=3)
-            ax.text(tx, ty, label, ha="left", va="center", fontsize=9.5, color=INK, fontweight="bold", zorder=4)
+            ax.plot(
+                [c[0], tx - 0.004 * w], [c[1], ty], color=INK2, linewidth=0.7, zorder=3
+            )
+            ax.text(
+                tx,
+                ty,
+                label,
+                ha="left",
+                va="center",
+                fontsize=9.5,
+                color=INK,
+                fontweight="bold",
+                zorder=4,
+            )
         else:
-            ax.text(c[0], c[1], label, ha="center", va="center", fontsize=9.5 if len(label) < 8 else 8 if len(label) < 10 else 7, color=INK, fontweight="bold", zorder=4)
+            ax.text(
+                c[0],
+                c[1],
+                label,
+                ha="center",
+                va="center",
+                fontsize=9.5 if len(label) < 8 else 8 if len(label) < 10 else 7,
+                color=INK,
+                fontweight="bold",
+                zorder=4,
+            )
     ax.set_xlim(x0 - 0.01 * w, x1 + 0.10 * w)
     ax.set_ylim(y0 - 0.03 * h, y1 + 0.10 * h)
     ax.set_aspect("equal")
     ax.axis("off")
     for i, (txt, col) in enumerate(zip(legend, [BLUE, RED, GREY])):
-        ax.add_patch(plt.Rectangle((x0 + (0.02 + 0.27 * i) * w, y1 + 0.045 * h), 0.022 * w, 0.03 * h, facecolor=col, edgecolor="none"))
-        ax.text(x0 + (0.048 + 0.27 * i) * w, y1 + 0.06 * h, txt, va="center", fontsize=10.5, color=INK)
+        ax.add_patch(
+            plt.Rectangle(
+                (x0 + (0.02 + 0.27 * i) * w, y1 + 0.045 * h),
+                0.022 * w,
+                0.03 * h,
+                facecolor=col,
+                edgecolor="none",
+            )
+        )
+        ax.text(
+            x0 + (0.048 + 0.27 * i) * w,
+            y1 + 0.06 * h,
+            txt,
+            va="center",
+            fontsize=10.5,
+            color=INK,
+        )
     ax.set_title(title, loc="left", fontsize=13, fontweight="bold", color=INK, pad=6)
     fig.tight_layout()
     return fig
@@ -274,7 +392,9 @@ def figure_html(fig, alt: str, dpi: int = 150) -> str:
     buf = io.BytesIO()
     fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight", pad_inches=0.05)
     uri = "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
-    return f'<img src="{uri}" alt="{html.escape(alt)}" style="max-width:100%;height:auto">'
+    return (
+        f'<img src="{uri}" alt="{html.escape(alt)}" style="max-width:100%;height:auto">'
+    )
 
 
 #### Run ####
@@ -282,14 +402,24 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--source", choices=["real", "simulated"], default="real")
     args = ap.parse_args()
-    figs_spec = __import__("importlib.util").util.spec_from_file_location("figs", HERE / "06-make_figures.py")
+    figs_spec = __import__("importlib.util").util.spec_from_file_location(
+        "figs", HERE / "06-make_figures.py"
+    )
     figs = __import__("importlib.util").util.module_from_spec(figs_spec)
     figs_spec.loader.exec_module(figs)
     res = figs.load(args.source, ROOT, write=False)
-    head = res["preds"].filter(pl.col("train") == res["headline_train"], pl.col("features") == res["oos_features"])
+    head = res["preds"].filter(
+        pl.col("train") == res["headline_train"],
+        pl.col("features") == res["oos_features"],
+    )
     races = build_races(head, load_candidates())
     out = ROOT / "paper" / "figures"
     out.mkdir(parents=True, exist_ok=True)
-    winner_map(races).savefig(out / f"{args.source}_winner_map.png", dpi=150, bbox_inches="tight", pad_inches=0.05)
+    winner_map(races).savefig(
+        out / f"{args.source}_winner_map.png",
+        dpi=150,
+        bbox_inches="tight",
+        pad_inches=0.05,
+    )
     (out / f"{args.source}_race_cards.html").write_text(cards_html(races))
     print(f"saved map and cards for {len(races)} races to {out}")

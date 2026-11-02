@@ -15,9 +15,8 @@
 # Run with: uv run scripts/01b-download_acs.py
 
 #### Workspace setup ####
-from pathlib import Path
-
 import os
+from pathlib import Path
 
 import httpx
 import polars as pl
@@ -27,7 +26,15 @@ load_dotenv()
 
 RAW_DIR = Path("data/01-raw_data")
 RAW_DIR.mkdir(parents=True, exist_ok=True)
-ACS_YEARS = [2012, 2014, 2016, 2018, 2020, 2022, 2024]  # 5-year ACS ending in these years
+ACS_YEARS = [
+    2012,
+    2014,
+    2016,
+    2018,
+    2020,
+    2022,
+    2024,
+]  # 5-year ACS ending in these years
 
 # Variable codes from tables B01001, B01002, B02001, B03003, B15003, B19013
 VARIABLES = {
@@ -81,7 +88,11 @@ def fetch_year(year: int) -> pl.DataFrame:
         params = {"get": "NAME," + ",".join(group), "for": "state:*", "key": key}
         r = httpx.get(url, params=params, timeout=60)
         if r.status_code != 200:  # never print the URL: it contains the key
-            hint = " (Census rejected the key: check it and activate it via the email link)" if "invalid_key" in r.headers.get("location", "") else ""
+            hint = (
+                " (Census rejected the key: check it and activate it via the email link)"
+                if "invalid_key" in r.headers.get("location", "")
+                else ""
+            )
             raise SystemExit(f"ACS {year}: HTTP {r.status_code}{hint}")
         header, *rows = r.json()
         frames.append(pl.DataFrame(rows, schema=header, orient="row").drop("state"))
