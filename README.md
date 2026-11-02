@@ -33,7 +33,7 @@ Website: https://OWNER.github.io/REPO/
 
 ## Data not included
 
-Explain anything that cannot be committed (e.g. licence restrictions), how to obtain it, and where to put it. A small sample with the right file names and columns is in `data/01-raw_data/`.
+Explain anything that cannot be committed (e.g. license restrictions), how to obtain it, and where to put it. A small sample with the right file names and columns is in `data/01-raw_data/`.
 
 ## Statement on LLM usage
 

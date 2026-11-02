@@ -8,7 +8,7 @@
 
 <meta name="author" content="Bolong Tang">
 <meta name="author" content="Yi Zhi (Harry) Zhang">
-<meta name="dcterms.date" content="2026-10-31">
+<meta name="dcterms.date" content="2026-11-02">
 
 <title>Synthetic Voters Give Republicans a 72% Chance of Keeping the Senate in 2026 – Senate 2026 forecast</title>
 <style>
@@ -150,7 +150,7 @@ div.csl-indent {
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">October 31, 2026</p>
+      <p class="date">November 2, 2026</p>
     </div>
   </div>
   
@@ -162,13 +162,11 @@ div.csl-indent {
 </header>
 
 
-<div class="write">
-<p>Opening paragraph (2 to 3 sentences): what this page is and that every “voter” is synthetic. Then the headline: Republicans keep the Senate in <strong>72%</strong> of 10,000 simulated elections, median <strong>52</strong> Republican seats (80% interval 47 to 57). Republicans are favoured in 21 of 35 races.</p>
-</div>
+<p>On this page we forecast all 35 races held on November 3 in the 2026 U.S. Senate elections. For each of 5,173 real respondents from the 2024 Cooperative Election Study, we wrote a short persona, including information such as their age, gender, race, state, education, income, party identification, ideology. We then fed each persona in the first person to three large language models (the third for comparison only) and asked how the persona would vote. Each model gave 5 answers per persona. These answers were then weighted to midterm voters, corrected using a 2024 backtest, and used for 10,000 simulated elections. This method is called silicon sampling <span class="citation" data-cites="argyle2023">(<a href="#ref-argyle2023" role="doc-biblioref">Argyle et al. 2023</a>)</span>. We forecast a 72% chance that Republicans keep control, with a median of 52 Republican seats (80% interval 47 to 57), and favored in 21 out of 35 races.</p>
 <section id="forecast" class="level2">
 <h2 class="anchored" data-anchor-id="forecast">The forecast</h2>
 <div id="cell-fig-seats" class="cell" data-execution_count="2">
-<div class="cell-output cell-output-display" data-execution_count="2">
+<div class="cell-output cell-output-display" data-execution_count="15">
 <div id="fig-seats" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-seats-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -181,11 +179,11 @@ Figure&nbsp;1: Republican seats after the 2026 election in 10,000 simulated elec
 </div>
 </div>
 </div>
-<div class="write">
-<p>Read the seat chart for the reader: probability of control, the most likely outcomes, how wide the spread is and why (the national error is shared by every state, so states move together).</p>
-</div>
+<p>One full simulated election means that every one of the 35 races has a winner. We ran 10,000 of these simulated elections, and each one of them finished with a set number of Republican senators (31 Republican seats not up this year + races won by Republicans this year out of the 35). Each bar is one seat count (34 to 64). There is a total of 100 senate seats, and each bar counts simulations that ends with that number of Republican seats out of 100. So red bars are 50 or more Republican seats (Republicans control the senate), and blue bars are 49 or fewer (Democrats control the senate). If we add up all the red bars, we get 72% of our simulations, meaning that republicans keep control of the senate in approximately 7/10 simulations.</p>
+<p>The most common outcomes are 52 Republican seats (10.4% of the simulations, also happens to be the median), 51 or 53 Republican seats (each 9.7% of the simulations), and an exact 50-50 tie (8.6% of the simulations). Republicans controlled the senate outright (51 or more seats) in 63% of the simulations. Republicans gained more seats compared to today (54 or more seats) in 33% of the simulations.</p>
+<p>Notice that the spread of the histogram is very wide. The 80% interval is from 47 to 57, which means that about 8 out of every 10 simulations have Republicans hold between 47 and 57 seats. The full range is 34 to 64 seats. Why is our histogram so wide? For every simulated election we introduce four kinds of uncertainty. First is a national error shared by every state, where we draw one number from a normal distribution with a set standard deviation of 3 percentage points to determine how far the forecast is off nationwide. This matters because if state wise errors were independent, they would often cancel each other out and lead to a bunched-together histogram around 52. Moving every state in the same direction is also honest because real polling misses also tend to run the same way across states, like in 2016 and 2020 <span class="citation" data-cites="gelman2020">(<a href="#ref-gelman2020" role="doc-biblioref">Gelman et al. 2020</a>)</span>. Second is a state error drawn for each separate race to capture local factors (effect of candidates, local issues, campaign success), it was measured as how far off the corrected forecast was for each state in the 2024 backtest and has a standard deviation of 4.7 percentage points. Third, in each simulation we pick one of two LLM models (GPT-4o mini or Llama 3.3 70B) and use its numbers for every state. And fourth, there is sampling error caused by the limited number of personas for each state (about 148 on average).</p>
 <div id="cell-fig-states" class="cell" data-execution_count="3">
-<div class="cell-output cell-output-display" data-execution_count="3">
+<div class="cell-output cell-output-display" data-execution_count="16">
 <div id="fig-states" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-states-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -198,9 +196,8 @@ Figure&nbsp;2: Forecast for each race. Each row shows 20 equally likely outcomes
 </div>
 </div>
 </div>
-<div class="write">
-<p>How to read the dot plot (count the dots on each side of 50%). Name the closest races: Texas, North Carolina, Michigan, Georgia. Point to the full table in the appendix.</p>
-</div>
+<p>In this graph, each row is 1 race/1 state, so there are 35 rows total. Looking at the 50% line, a dot to the right is a Republican win, and a dot to the left is an opposition win. There are 20 dots on each row, and each dot is one equally likely outcome. So, what is a dot and where does it come from? For each state, we sort the 10,000 simulated results from most Democratic to most Republican and then cut this sorted list into 20 equal slices each with 500 simulations. Each dot is the middle of one of these slices and stands for about a 5% chance. This kind of graph is a quantile dot plot, used by <span class="citation" data-cites="kay2016">Kay et al. (<a href="#ref-kay2016" role="doc-biblioref">2016</a>)</span> because people are better at judging chances by counting outcomes rather than looking at a probability curve or reading a numerical percentage. So, to get a rough chance that Republicans win, just count the red dots (the dots to the right of the 50% line). Just keep in mind that counting is only accurate to about 5 percentage points, and you can refer to <a href="#tbl-forecast" class="quarto-xref">Table&nbsp;3</a> for exact chances.</p>
+<p>Rows are sorted by median, so the most Republican races are at the top of the graph, and the most Democratic races are at the bottom. The closest races are the ones where the dots straddle 50%. The two closest races here are Texas and North Carolina, where there are 11 red dots out of 20, giving an approximate Republican chance of 55% (the actual exact chance is 54%). Michigan has 13 red dots, with a Republican chance of 67%, and is a seat that Republicans are favored to take from Democrats. Georgia has 7 red dots and a Republican chance of 33%; it is a Democratic seat where Republicans are behind.</p>
 </section>
 <section id="method" class="level2">
 <h2 class="anchored" data-anchor-id="method">How the forecast is built</h2>
@@ -254,18 +251,21 @@ Simulation
 </div>
 </div>
 </div>
-<div class="write">
-<p>One short paragraph per step, in order: (1) personas from real CES 2024 respondents <span class="citation" data-cites="kuriwaki2025">(<a href="#ref-kuriwaki2025" role="doc-biblioref">Kuriwaki 2025</a>)</span>; (2) the prompt, following <span class="citation" data-cites="argyle2023">Argyle et al. (<a href="#ref-argyle2023" role="doc-biblioref">2023</a>)</span> and <span class="citation" data-cites="bisbee2024">Bisbee et al. (<a href="#ref-bisbee2024" role="doc-biblioref">2024</a>)</span>; (3) three models through OpenRouter, five answers each at temperature 1; (4) weights: survey weight times midterm turnout estimated from CES 2022; (5) calibration with the 2024 line; (6) the simulation, with its four sources of uncertainty (national swing of 3 points, an assumption; state error of 4.7 points, measured leave-one-out; which model; sampling). Ballots from <span class="citation" data-cites="wiki2026">Wikipedia contributors (<a href="#ref-wiki2026" role="doc-biblioref">2026b</a>)</span>.</p>
-</div>
+<p>First, we created personas. We used the 2024 respondents in the cumulative CES file, which sets every year’s survey into one consistent format <span class="citation" data-cites="kuriwaki2025">(<a href="#ref-kuriwaki2025" role="doc-biblioref">Kuriwaki 2025</a>)</span>. We included only respondents who live in the 35 states with a 2026 senate race, and randomly drew up to 150 respondents in each state (A few had fewer respondents and the minimum is 95). This process gave us a total of 5173 personas. A persona is a short paragraph written in first person, built from a real respondent’s own answers <span class="citation" data-cites="argyle2023">(<a href="#ref-argyle2023" role="doc-biblioref">Argyle et al. 2023</a>)</span>, which in our case includes details regarding age, race, gender, state, education, family income, party identification (on a 7-point scale from strong Democrat to strong Republican), ideology (very liberal to very conservative), religious attendance, and how closely they follow politics. If a respondent left an answer blank, that detail is left entirely out of their persona. We use these 2024 respondents to stand in for 2026 voters because we did not survey anybody in 2026.</p>
+<p>Second, we created prompts for the AI models. They contained in order: a system message telling the model to answer as the person using only knowledge about politics they would have, the persona, the ballot (in Ohio and Florida it says special election, in independent races it says, “an independent”, and in Montana and Mississippi it lists all three), and all allowed answers (Republican, Democrat, Other, Would not vote). We got the 2026 ballot from Wikipedia <span class="citation" data-cites="wiki2026">(<a href="#ref-wiki2026" role="doc-biblioref">Wikipedia contributors 2026b</a>)</span>. Candidates are described only by their party and not their name in order to keep 2024 and 2026 comparable. See <a href="#ohio-prompt">the example prompt below</a>. For pure independents, the models mostly answered “Other” even though in 2024 about half of the self-reported independents picked either Democrat or Republican. We remedied this with a follow-up question forcing a choice, which is detailed further in <a href="#independents">The independents problem</a>.</p>
+<p>Third, we used 3 models through OpenRouter <span class="citation" data-cites="citeOpenRouter">(<a href="#ref-citeOpenRouter" role="doc-biblioref">OpenRouter 2026</a>)</span>. We used GPT-4o mini <span class="citation" data-cites="gpt4omini">(<a href="#ref-gpt4omini" role="doc-biblioref">OpenAI 2024</a>)</span> and Llama 3.3 70B <span class="citation" data-cites="llama33">(<a href="#ref-llama33" role="doc-biblioref">Meta 2024</a>)</span> for our forecasting because their training data ends before the 2024 election, allowing them to be tested on 2024. We used DeepSeek V4 Flash <span class="citation" data-cites="deepseekv4">(<a href="#ref-deepseekv4" role="doc-biblioref">DeepSeek-AI 2026</a>)</span> for comparison only because its knowledge on 2025-26 means it cannot be tested on 2024. Each model gave five answers for every persona. We used temperature 1, so answers are sampled in proportion to how likely the model thinks each asnwer is. For example, a persona responding Republican 3/5 times is counted as 60% Republican rather than as 1 Republican vote. Our number of replies and total cost are detailed below in <a href="#tbl-costs" class="quarto-xref">Table&nbsp;2</a>.</p>
+<p>Fourth, we produced state estimates from our answers through weights. Each persona gets a Republican share, which is Republican answers divided by answers for any major candidate on the ballot (Republican, Democrat, independent). In the three-way races in Montana and Mississippi, we measure Republican against the Democrat and independent combined. Each persona’s weight is calculated by their CES survey weight (makes the sample match the state’s adult population) multiplied by their turnout probability (the share of 2022 CES respondents in the same age band, college/no college, and news-interest group who actually voted, according to official voter records). We conducted post-stratification, meaning the estimate of each state is the weighted average of the shares of its personas.</p>
+<p>Fifth, we conducted calibration. In our 2024 backtest with 33 races and 4,833 personas, the raw estimates were too Democratic and extreme, which <span class="citation" data-cites="bisbee2024">Bisbee et al. (<a href="#ref-bisbee2024" role="doc-biblioref">2024</a>)</span> also recognized. For each model we fit a straight line on the 33 races, <code>actual = a + b × raw</code>. For GPT the slope was 0.65, and for Llama the slope was 0.62. A slope of about 0.63 says that the real results are about 2/3 as lopsided as the synthetic results. Our line corrects every 2026 estimate since the intercept corrects the Democratic lean and the slope pulls extreme estimates toward the middle. We conducted this calibration with the assumption that the 2024 model errors carry over to 2026.</p>
+<p>Lastly, we simulated 10,000 elections. In each election we add random errors to every state’s corrected estimate, and the state is called for the candidate with above 50%. The number of Republican seats is counted, and we add the 31 Republican seats that are not up. The four sources of uncertainty are detailed in the explanation of <a href="#fig-seats" class="quarto-xref">Figure&nbsp;1</a>.</p>
+<div id="ohio-prompt">
 <div class="prompt-box">
 <p><b>System:</b> You will be given a description of a person. Answer from this person’s perspective, using only knowledge about politics that they would have.</p>
 <p><b>User:</b> I am a 44-year-old white woman living in Ohio. My highest level of education is a high school diploma. My family income is between $60,000 and $70,000 a year. In politics, I consider myself an independent who does not lean toward either party. I would describe my political views as very conservative. I never attend religious services. I follow what’s going on in government and public affairs hardly at all.</p>
 <p>It is November 2026. In this year’s midterm U.S. Senate special election in Ohio, the main candidates are a Republican and a Democrat. I will vote for …</p>
 Reply with exactly one of: Republican, Democrat, Other, Would not vote. No other text.
 </div>
-<div class="write">
-<p>One sentence introducing the prompt above (a real Ohio persona, shown exactly as sent). Mention the forced-choice follow-up for pure independents (section 4).</p>
 </div>
+<p>This persona, drawn at random, is real and made from a CES 2024 respondent from Ohio. The prompt is shown in the exact form it is fed to the models. Note that this persona is a pure independent, which is the type of persona that led models to answer “Other”, and receive a follow-up calling it to choose between the Republican and Democratic candidate, as described in <a href="#independents">the independents problem</a>.</p>
 </section>
 <section id="backtest" class="level2">
 <h2 class="anchored" data-anchor-id="backtest">Does it work? The 2024 backtest</h2>
@@ -273,21 +273,21 @@ Reply with exactly one of: Republican, Democrat, Other, Would not vote. No other
 <p>We ran the same pipeline on 2024, when the answers are known: 4,833 personas in 33 races, with models whose knowledge ends before that election. Before calibration the models are too Democratic (bias 1.6 points for GPT-4o mini, 3.3 for Llama) and too extreme: the calibration slopes are 0.65 and 0.62, so real results are about two thirds as lopsided as the synthetic ones. Link to <span class="citation" data-cites="bisbee2024">Bisbee et al. (<a href="#ref-bisbee2024" role="doc-biblioref">2024</a>)</span>.</p>
 </div>
 <div id="cell-fig-backtest" class="cell" data-execution_count="6">
-<div class="cell-output cell-output-display" data-execution_count="6">
+<div class="cell-output cell-output-display" data-execution_count="19">
 <div id="fig-backtest" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-backtest-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="index_files/figure-html/fig-backtest-output-1.png" width="720" height="384" class="figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-backtest-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: 2024 backtest. Each dot is one of the 33 Senate races of 2024: the synthetic voters’ Republican share (before calibration) against the actual result <span class="citation" data-cites="wiki2024">(<a href="#ref-wiki2024" role="doc-biblioref">Wikipedia contributors 2026a</a>)</span>. The dashed line is a perfect forecast; the solid line is the calibration line fitted to these races and used to correct the 2026 forecast. The three largest misses for each model are labelled.
+Figure&nbsp;3: 2024 backtest. Each dot is one of the 33 Senate races of 2024: the synthetic voters’ Republican share (before calibration) against the actual result <span class="citation" data-cites="wiki2024">(<a href="#ref-wiki2024" role="doc-biblioref">Wikipedia contributors 2026a</a>)</span>. The dashed line is a perfect forecast; the solid line is the calibration line fitted to these races and used to correct the 2026 forecast. The three largest misses for each model are labeled.
 </figcaption>
 </figure>
 </div>
 </div>
 </div>
 <div id="cell-fig-agreement" class="cell" data-execution_count="7">
-<div class="cell-output cell-output-display" data-execution_count="7">
+<div class="cell-output cell-output-display" data-execution_count="20">
 <div id="fig-agreement" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-agreement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -307,7 +307,7 @@ Figure&nbsp;4: Person by person in 2024: the share of synthetic voters who pick 
 <section id="independents" class="level2">
 <h2 class="anchored" data-anchor-id="independents">The independents problem</h2>
 <div id="cell-fig-independents" class="cell" data-execution_count="8">
-<div class="cell-output cell-output-display" data-execution_count="8">
+<div class="cell-output cell-output-display" data-execution_count="21">
 <div id="fig-independents" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-independents-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -332,14 +332,14 @@ Figure&nbsp;5: The 711 pure independents in the 2024 backtest. Free answer: what
 <p>Two or three sentences on the regression: a ridge regression of each state’s Senate vote on its lagged demographics and partisanship, 2014 to 2024, checked against certified results. The full write-up and code are in the repository (<code>paper/_regression.qmd</code>, <code>scripts/05-regression.py</code>). The two methods name the same winner in 31 of 35 races.</p>
 </div>
 <div id="cell-fig-regression" class="cell" data-execution_count="9">
-<div class="cell-output cell-output-display" data-execution_count="9">
+<div class="cell-output cell-output-display" data-execution_count="22">
 <div id="fig-regression" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-regression-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 <img src="index_files/figure-html/fig-regression-output-1.png" width="624" height="480" class="figure-img">
 </div>
 <figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-regression-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;6: Silicon sampling against the regression, one dot per 2026 race. Red and blue dots are races where both methods favour the same side; hollow dots are races where they disagree. The regression’s share is the Republican share of the two-party vote.
+Figure&nbsp;6: Silicon sampling against the regression, one dot per 2026 race. Red and blue dots are races where both methods favor the same side; hollow dots are races where they disagree. The regression’s share is the Republican share of the two-party vote.
 </figcaption>
 </figure>
 </div>
@@ -388,7 +388,7 @@ Table&nbsp;1: Accuracy on the 33 Senate races of 2024, out of sample for both me
 <section id="do-the-models-agree" class="level3">
 <h3 class="anchored" data-anchor-id="do-the-models-agree">Do the models agree?</h3>
 <div id="cell-fig-models" class="cell" data-execution_count="11">
-<div class="cell-output cell-output-display" data-execution_count="11">
+<div class="cell-output cell-output-display" data-execution_count="24">
 <div id="fig-models" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-models-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
