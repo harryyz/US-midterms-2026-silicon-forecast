@@ -225,8 +225,9 @@ def pipeline_html() -> str:
 #### FIG D: 2024 backtest ####
 def fig_backtest(bt: pl.DataFrame, calib: pl.DataFrame):
     d = bt.with_columns(name=pl.col("state").replace(STATE_NAMES), miss=pl.col("error").abs()).to_pandas()
+    assert d["rep_share"].between(0.10, 0.85).all() and d["actual"].between(0.10, 0.85).all(), "point outside axis"
     worst = d.sort_values("miss", ascending=False).groupby("model").head(3)
-    lines = pd.DataFrame([{"model": r["model"], "x": 0.15, "y": r["intercept"] + r["slope"] * 0.15,
+    lines = pd.DataFrame([{"model": r["model"], "x": 0.10, "y": r["intercept"] + r["slope"] * 0.10,
                            "xend": 0.85, "yend": r["intercept"] + r["slope"] * 0.85}
                           for r in calib.iter_rows(named=True)])  # fmt: skip
     return (
@@ -236,8 +237,8 @@ def fig_backtest(bt: pl.DataFrame, calib: pl.DataFrame):
         + geom_point(color=GREY, size=2.2, stroke=0)
         + geom_text(aes(label="name"), data=worst, size=8, family=FONT, color=INK, nudge_y=0.025)
         + facet_wrap("model")
-        + scale_x_continuous(labels=pct, limits=(0.15, 0.85))
-        + scale_y_continuous(labels=pct, limits=(0.15, 0.85))
+        + scale_x_continuous(labels=pct, limits=(0.10, 0.85))
+        + scale_y_continuous(labels=pct, limits=(0.10, 0.85))
         + labs(x="Republican share from the synthetic voters (before calibration)", y="Actual Republican share")
         + theme_news(7.5, 4.0, panel_grid_major_x=element_line(color=GRID, size=0.5))
     )
