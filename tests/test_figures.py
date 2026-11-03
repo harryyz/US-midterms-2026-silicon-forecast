@@ -1,8 +1,8 @@
 #### Preamble ####
 # Purpose: Test that every regression figure builds and saves from simulated data.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: None (simulates its own inputs in a temp directory)
 

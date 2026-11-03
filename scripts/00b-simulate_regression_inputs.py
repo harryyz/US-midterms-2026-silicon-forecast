@@ -2,9 +2,9 @@
 # Purpose: Simulate the inputs of scripts/05-regression.py (CES-like respondents,
 #          ACS-like state features, certified-style Senate results) so the
 #          regression can run end to end before the real downloads exist.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: None
 #

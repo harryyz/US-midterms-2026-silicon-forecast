@@ -2,9 +2,9 @@
 # Purpose: Collect the 2026 U.S. Senate candidates (Democratic and Republican nominees,
 #          incumbent status) and official portraits of those who serve or have served
 #          in Congress, for the race cards and map on the website.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: Internet access. No account needed.
 #

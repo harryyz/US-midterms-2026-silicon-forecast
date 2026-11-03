@@ -1,8 +1,8 @@
 #### Preamble ####
 # Purpose: Test the candidate parser, the portrait matcher, the race cards and the winner map.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: None (the geometry test skips if data/01-raw_data/us-states.geojson is absent)
 

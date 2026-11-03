@@ -1,9 +1,9 @@
 #### Preamble ####
 # Purpose: Build the figures for the regression forecast (used by
 #          paper/regression.qmd) and save them as PNGs in paper/figures/.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: scripts/05-regression.py and its inputs (real or simulated)
 #

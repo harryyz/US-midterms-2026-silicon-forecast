@@ -3,9 +3,9 @@
 #          red-blue bar, nominee names and portraits, the predicted winner shown larger;
 #          (2) a USA map coloured by predicted winner (blue Democratic, red Republican,
 #          grey no race) with the winner's name in each state.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: scripts/05-regression.py outputs; data/01-raw_data/candidates_2026.csv
 #   (scripts/01e-download_candidates.py); data/01-raw_data/us-states.geojson (downloaded

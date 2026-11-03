@@ -1,9 +1,9 @@
 #### Preamble ####
 # Purpose: Download state-level demographics from the Census Bureau ACS 5-year
 #          estimates for 2012-2024 (lagged features need the cycle two years earlier) (2024 is reused for the 2026 forecast).
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: Internet access (api.census.gov) and a free Census API key
 #   (https://api.census.gov/data/key_signup.html), supplied as the environment
