@@ -1,9 +1,9 @@
 #### Preamble ####
 # Purpose: Test the regression pipeline: helpers on small synthetic data, the
 #          certified-results loader, and the real-data forecast outputs.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: data/01-raw_data/ces_2022_2024.parquet (the sample is not enough)
 

@@ -166,7 +166,7 @@ div.csl-indent {
 <section id="forecast" class="level2">
 <h2 class="anchored" data-anchor-id="forecast">The forecast</h2>
 <div id="cell-fig-seats" class="cell" data-execution_count="2">
-<div class="cell-output cell-output-display" data-execution_count="2">
+<div class="cell-output cell-output-display" data-execution_count="28">
 <div id="fig-seats" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-seats-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -183,7 +183,7 @@ Figure&nbsp;1: Republican seats after the 2026 election in 10,000 simulated elec
 <p>The most common outcomes are 52 Republican seats (10.4% of the simulations, also happens to be the median), 51 or 53 Republican seats (each 9.7% of the simulations), and an exact 50-50 tie (8.6% of the simulations). Republicans controlled the senate outright (51 or more seats) in 63% of the simulations. Republicans gained more seats compared to today (54 or more seats) in 33% of the simulations.</p>
 <p>Notice that the spread of the histogram is very wide. The 80% interval is from 47 to 57, which means that about 8 out of every 10 simulations have Republicans hold between 47 and 57 seats. The full range is 34 to 64 seats. Why is our histogram so wide? For every simulated election we introduce four kinds of uncertainty. First is a national error shared by every state, where we draw one number from a normal distribution with a set standard deviation of 3 percentage points to determine how far the forecast is off nationwide. This matters because if state wise errors were independent, they would often cancel each other out and lead to a bunched-together histogram around 52. Moving every state in the same direction is also honest because real polling misses also tend to run the same way across states, like in 2016 and 2020 <span class="citation" data-cites="gelman2020">(<a href="#ref-gelman2020" role="doc-biblioref">Gelman et al. 2020</a>)</span>. Second is a state error drawn for each separate race to capture local factors (effect of candidates, local issues, campaign success), it was measured as how far off the corrected forecast was for each state in the 2024 backtest and has a standard deviation of 4.7 percentage points. Third, in each simulation we pick one of two LLM models (GPT-4o mini or Llama 3.3 70B) and use its numbers for every state. And fourth, there is sampling error caused by the limited number of personas for each state (about 148 on average).</p>
 <div id="cell-fig-states" class="cell" data-execution_count="3">
-<div class="cell-output cell-output-display" data-execution_count="3">
+<div class="cell-output cell-output-display" data-execution_count="29">
 <div id="fig-states" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-states-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -272,7 +272,7 @@ Reply with exactly one of: Republican, Democrat, Other, Would not vote. No other
 <p>What is our backtest? We ran the same pipeline as described in the <a href="#method">method section</a>, but on the 2024 Senate races which already have known results. Here we had 4,833 personas in 33 races, and weights were <code>survey weight × each person’s validated 2024 turnout</code>. We compared the synthetic Republican share from each state with its actual 2024 result from <span class="citation" data-cites="wiki2024">Wikipedia contributors (<a href="#ref-wiki2024" role="doc-biblioref">2026a</a>)</span>. It is from this test that we got our calibration line and 4.7-point state error used to forecast 2026.</p>
 <p>Before any correction, the average lean (actual – synthetic) was +1.6 points for GPT and +3.3 points for Llama, meaning that real results were more Republican. The average miss was 5.7 points for GPT and 6.4 points for Llama. Both models called 28 out of 33 races correctly. Synthetic voters were too Democratic by an average of 4.3 points (GPT) and 6.5 points (Llama) in the 19 races that Democrats won. Synthetic voters were too Republican by a smaller average of 2.0 (GPT) and 1.0 (Llama) in the 14 races Republicans won. This matches <span class="citation" data-cites="bisbee2024">Bisbee et al. (<a href="#ref-bisbee2024" role="doc-biblioref">2024</a>)</span>, where synthetic samples show too little variation and exaggerate difference between groups. In <a href="#fig-backtest" class="quarto-xref">Figure&nbsp;3</a> below, the solid calibration line being flatter than the dashed line visualizes this “too extreme”. The wrong calls were mostly very close races. Both models incorrectly called Nevada, Pennsylvania, Wisconsin, and Ohio, which were all races that were decided by just a few points in 2024. After correction, GPT’s average miss fell to 3.9 points, and Llama’s fell to 3.8 points. GPT called 29 races, but Llama correctly called 28 still. We used leave-one-out to fit a line without the state being predicted, because partly fitting a line to the state being predicted may lead us to overestimate the improvement.</p>
 <div id="cell-fig-backtest" class="cell" data-execution_count="6">
-<div class="cell-output cell-output-display" data-execution_count="6">
+<div class="cell-output cell-output-display" data-execution_count="32">
 <div id="fig-backtest" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-backtest-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -286,7 +286,7 @@ Figure&nbsp;3: 2024 backtest. Each dot is one of the 33 Senate races of 2024: th
 </div>
 </div>
 <div id="cell-fig-agreement" class="cell" data-execution_count="7">
-<div class="cell-output cell-output-display" data-execution_count="7">
+<div class="cell-output cell-output-display" data-execution_count="33">
 <div id="fig-agreement" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-agreement-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -305,7 +305,7 @@ Figure&nbsp;4: Person by person in 2024: the share of synthetic voters who pick 
 <section id="independents" class="level2">
 <h2 class="anchored" data-anchor-id="independents">The independents problem</h2>
 <div id="cell-fig-independents" class="cell" data-execution_count="8">
-<div class="cell-output cell-output-display" data-execution_count="8">
+<div class="cell-output cell-output-display" data-execution_count="34">
 <div id="fig-independents" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-independents-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -318,19 +318,15 @@ Figure&nbsp;5: The 711 pure independents in the 2024 backtest. Free answer: what
 </div>
 </div>
 </div>
-<div class="write">
-<p>Asked freely, the models give 60% of pure independents’ answers to “Other”. Forced to choose, they send them to the opposition (67%), while the same people reported voting 59% Republican. Explain why we used the forced choice anyway and that it is the same in 2024 and 2026. Connect to mode collapse in <span class="citation" data-cites="heath2026">Heath and Alexander (<a href="#ref-heath2026" role="doc-biblioref">2026</a>)</span>.</p>
-</div>
+<p>For pure independents, 60% of model answers were “Other”. However in our 2024 backtest, 351 of the 360 pure independents who reported a Senate vote voted for a Republican or their main opposition. This is an example of mode collapse as mentioned in <span class="citation" data-cites="heath2026">Heath and Alexander (<a href="#ref-heath2026" role="doc-biblioref">2026</a>)</span>, where the models settle on a safe answer and fail to capture the spread the real voters provide. In our study “Other” answers do not count for a persona’s Republican share, so about half of pure independents had no usable answers when answering freely. To alleviate this, we included a forced-choice follow-up: “If you had to choose between the Republican candidate and the Democratic candidate…” The forced-choice gave the opposition 67% of the answers, but in reality 59% of the group voted Republican. We used this follow-up in both the 2024 backtest and the 2026 forecast, so the calibration line can correct part of the lean on average across each state. We decided to keep this change because to trade answers that would have been discarded for a bias that we could measure in the 2024 backtest.</p>
 </section>
 <section id="second-opinions" class="level2">
 <h2 class="anchored" data-anchor-id="second-opinions">Second opinions</h2>
 <section id="a-regression-forecast" class="level3">
 <h3 class="anchored" data-anchor-id="a-regression-forecast">A regression forecast</h3>
-<div class="write">
-<p>Two or three sentences on the regression: a ridge regression of each state’s Senate vote on its lagged demographics and partisanship, 2014 to 2024, checked against certified results. The full write-up and code are in the repository (<code>paper/_regression.qmd</code>, <code>scripts/05-regression.py</code>). The two methods name the same winner in 31 of 35 races.</p>
-</div>
+<p>As a second opinion, we ran a ridge regression that predicts each state’s Senate vote share using state demographics from the American Community Survey (ACS) and partisanship from CES. The regression is trained on the 2014 to 2024 Senate races. The ridge regression and our silicon forecast predicted the same winner in 31 out of 35 races. They disagreed in Florida, Georgia, Montana and North Carolina. See <a href="#tbl-accuracy" class="quarto-xref">Table&nbsp;1</a> below for comparisons of winners called and average misses between our ridge and silicon sampling.</p>
 <div id="cell-fig-regression" class="cell" data-execution_count="9">
-<div class="cell-output cell-output-display" data-execution_count="9">
+<div class="cell-output cell-output-display" data-execution_count="35">
 <div id="fig-regression" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-regression-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -386,7 +382,7 @@ Table&nbsp;1: Accuracy on the 33 Senate races of 2024, out of sample for both me
 <section id="do-the-models-agree" class="level3">
 <h3 class="anchored" data-anchor-id="do-the-models-agree">Do the models agree?</h3>
 <div id="cell-fig-models" class="cell" data-execution_count="11">
-<div class="cell-output cell-output-display" data-execution_count="11">
+<div class="cell-output cell-output-display" data-execution_count="37">
 <div id="fig-models" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-models-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
@@ -399,9 +395,7 @@ Figure&nbsp;7: Raw Republican share by race from each model’s synthetic voters
 </div>
 </div>
 </div>
-<div class="write">
-<p>What the comparison shows: the three models land close together, and DeepSeek is more Democratic in most competitive races. What that might mean (it knows the 2026 political environment, the older models do not).</p>
-</div>
+<p><a href="#fig-models" class="quarto-xref">Figure&nbsp;7</a> shows raw Republican share by race from each model’s synthetic voters before any calibration. DeepSeek is only shown here because it has training data from 2025-26, which means it cannot be backtested on 2024, so we left it out of the forecast entirely. The models mostly agree with each other, but in Texas, GPT gave Republicans 55% and Llama 42%. So Texas may not just be a toss-up because the race itself is close, but also because the two models disagree about which party is ahead, and the forecast just averages over both.</p>
 </section>
 </section>
 <section id="limits" class="level2">
@@ -474,6 +468,7 @@ Table&nbsp;2: Every model call made for this project, through OpenRouter. The fi
 </figure>
 </div>
 </div>
+<p>In our silicon sampling forecast, the models added little beyond party, struggled with independents, and required a calibration line to adjust the spread. The silicon sampling worked mostly as a count of party identification, plus a correction. <span class="citation" data-cites="argyle2023">Argyle et al. (<a href="#ref-argyle2023" role="doc-biblioref">2023</a>)</span> mentions “algorithmic fidelity”, how language models can help reproduce how groups of voters behave. Our results support this for partisans with about 94.2% agreement, which was no better than just knowing their party (party baseline of 94.7%). <span class="citation" data-cites="argyle2023">Argyle et al. (<a href="#ref-argyle2023" role="doc-biblioref">2023</a>)</span> also found that fidelity was weakest for pure independents, which our 64.9% pure independent agreement also supported. <span class="citation" data-cites="bisbee2024">Bisbee et al. (<a href="#ref-bisbee2024" role="doc-biblioref">2024</a>)</span> argued that silicon sampling led to too little variance and exaggerated differences. Our synthetic states were too extreme: our calibration slopes of ~0.63 suggest that real results are just two-thirds as lopsided. <span class="citation" data-cites="heath2026">Heath and Alexander (<a href="#ref-heath2026" role="doc-biblioref">2026</a>)</span> brings up mode collapse, which happened in our silicon sampling process when 60% of pure independent answers were “Other”, whereas 98% of the real pure independents who reported that they voted selected a main candidate. <span class="citation" data-cites="gelman2020">Gelman et al. (<a href="#ref-gelman2020" role="doc-biblioref">2020</a>)</span> argues that errors are correlated across states. We followed their advice, and our national error and model choice move every state together, which gives us our 80% interval of 47 to 57 seats, and it is the simplest way we could have made our states move together, which is a limit. Our 3-point national error is an assumption we chose rather than something we measured.</p>
 <div class="write">
 <p>Discussion, connecting to the literature: <span class="citation" data-cites="argyle2023">Argyle et al. (<a href="#ref-argyle2023" role="doc-biblioref">2023</a>)</span> (algorithmic fidelity; independents), <span class="citation" data-cites="bisbee2024">Bisbee et al. (<a href="#ref-bisbee2024" role="doc-biblioref">2024</a>)</span> (too little variance, exaggerated differences: our slope of about 0.63), <span class="citation" data-cites="heath2026">Heath and Alexander (<a href="#ref-heath2026" role="doc-biblioref">2026</a>)</span> (mode collapse; our “Other” answers), <span class="citation" data-cites="gelman2020">Gelman et al. (<a href="#ref-gelman2020" role="doc-biblioref">2020</a>)</span> (correlated errors, the national swing as an assumption, rounding probabilities). Limits: one calibration election, from a presidential year; the 3-point national swing is assumed; candidates are described by party only; no 2026 survey; three-way races (Maine 2024, Montana and Mississippi 2026) are measured against the combined opposition. Where the forecast disagrees with expert ratings (Massachusetts, Illinois, Michigan, Ohio, Nebraska, Alaska) and why. Total cost: US$4.43.</p>
 </div>

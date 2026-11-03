@@ -1,9 +1,9 @@
 #### Preamble ####
 # Purpose: Test how certified Senate returns are reduced to one Dem-v-Rep race per
 #          state and year, and that the real file (if present) fits the regression.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: None (real-file checks skip if senate_results.csv is absent)
 

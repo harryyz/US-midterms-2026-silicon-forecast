@@ -125,6 +125,10 @@ n_ind_voted = int(ind["n"].max())  # pure independents with a reported vote for 
 n_ind_rep = int(sd["personas_2024"].filter((pl.col("pid7") == "Independent") & (pl.col("voted_sen_party") == "Republican")).height)
 n_ind_opp = n_ind_voted - n_ind_rep
 pct_ind_rep = pct(n_ind_rep / n_ind_voted)
+# Pure independents who reported any Senate vote (unweighted), and how many chose a minor-party candidate
+n_ind_any_vote = int(sd["personas_2024"].filter((pl.col("pid7") == "Independent") & pl.col("voted_sen_party").is_not_null()).height)
+n_ind_minor = n_ind_any_vote - n_ind_voted
+pct_ind_major = pct(n_ind_voted / n_ind_any_vote)
 
 
 def share(df, source, side):
@@ -226,23 +230,13 @@ For our ~3,060 partisans, the models performed no better than the party-line bas
 si.fig_independents(ind_shares)
 ```
 
-::: {.write}
-Asked freely, the models give `{python} share(ind_shares, "Free answer", "Other")` of pure independents' answers to
-"Other". Forced to choose, they send them to the opposition (`{python} share(ind_shares, "Forced answer", "Opposition")`),
-while the same people reported voting `{python} share(ind_shares, "Real vote", "Republican")` Republican. Explain why we
-used the forced choice anyway and that it is the same in 2024 and 2026. Connect to mode collapse in @heath2026.
-:::
+For pure independents, `{python} share(ind_shares, "Free answer", "Other")` of model answers were “Other”. However in our 2024 backtest, `{python} n_ind_voted` of the `{python} n_ind_any_vote` pure independents who reported a Senate vote voted for a Republican or their main opposition. This is an example of mode collapse as mentioned in @heath2026, where the models settle on a safe answer and fail to capture the spread the real voters provide. In our study “Other” answers do not count for a persona’s Republican share, so about half of pure independents had no usable answers when answering freely. To alleviate this, we included a forced-choice follow-up: “If you had to choose between the Republican candidate and the Democratic candidate…” The forced-choice gave the opposition `{python} share(ind_shares, "Forced answer", "Opposition")` of the answers, but in reality `{python} share(ind_shares, "Real vote", "Republican")` of the group voted Republican. We used this follow-up in both the 2024 backtest and the 2026 forecast, so the calibration line can correct part of the lean on average across each state. We decided to keep this change because to trade answers that would have been discarded for a bias that we could measure in the 2024 backtest.
 
 ## Second opinions {#second-opinions}
 
 ### A regression forecast
 
-::: {.write}
-Two or three sentences on the regression: a ridge regression of each state's Senate vote on its lagged demographics and
-partisanship, 2014 to 2024, checked against certified results. The full write-up and code are in the repository
-(`paper/_regression.qmd`, `scripts/05-regression.py`). The two methods name the same winner in
-`{python} str(n_agree)` of 35 races.
-:::
+As a second opinion, we ran a ridge regression that predicts each state’s Senate vote share using state demographics from the American Community Survey (ACS) and partisanship from CES. The regression is trained on the 2014 to 2024 Senate races. The ridge regression and our silicon forecast predicted the same winner in `{python} str(n_agree)` out of 35 races. They disagreed in Florida, Georgia, Montana and North Carolina. See @tbl-accuracy below for comparisons of winners called and average misses between our ridge and silicon sampling.
 
 ```{python}
 #| label: fig-regression
@@ -264,10 +258,7 @@ display(HTML(si.booktabs(si.accuracy_table(sd["bt"], ROOT), ["Average miss (poin
 si.fig_models(summary)
 ```
 
-::: {.write}
-What the comparison shows: the three models land close together, and DeepSeek is more Democratic in most competitive
-races. What that might mean (it knows the 2026 political environment, the older models do not).
-:::
+@fig-models shows raw Republican share by race from each model’s synthetic voters before any calibration. DeepSeek is only shown here because it has training data from 2025-26, which means it cannot be backtested on 2024, so we left it out of the forecast entirely. The models mostly agree with each other, but in Texas, GPT gave Republicans 55% and Llama 42%. So Texas may not just be a toss-up because the race itself is close, but also because the two models disagree about which party is ahead, and the forecast just averages over both.
 
 ## Uncertainty, costs and limits {#limits}
 
@@ -276,6 +267,8 @@ races. What that might mean (it knows the 2026 political environment, the older 
 #| tbl-cap: "Every model call made for this project, through OpenRouter. The first 2026 run is included although DeepSeek's answers from it were unusable (its reasoning used up the reply limit) and were replaced by the rerun. When: the date and the times of the first and last call of each run in 2026, Toronto time."
 display(HTML(si.booktabs(costs, ["Models", "Replies", "Cost (US$)"])))
 ```
+
+In our silicon sampling forecast, the models added little beyond party, struggled with independents, and required a calibration line to adjust the spread. The silicon sampling worked mostly as a count of party identification, plus a correction. @argyle2023 mentions “algorithmic fidelity”, how language models can help reproduce how groups of voters behave. Our results support this for partisans with about `{python} agree_partisan['GPT-4o mini']` agreement, which was no better than just knowing their party (party baseline of `{python} agree_partisan['Baseline']`). @argyle2023 also found that fidelity was weakest for pure independents, which our `{python} agree_ind['GPT-4o mini']` pure independent agreement also supported. @bisbee2024 argued that silicon sampling led to too little variance and exaggerated differences. Our synthetic states were too extreme: our calibration slopes of ~0.63 suggest that real results are just two-thirds as lopsided. @heath2026 brings up mode collapse, which happened in our silicon sampling process when `{python} share(ind_shares, "Free answer", "Other")` of pure independent answers were “Other”, whereas `{python} pct_ind_major` of the real pure independents who reported that they voted selected a main candidate. @gelman2020 argues that errors are correlated across states. We followed their advice, and our national error and model choice move every state together, which gives us our 80% interval of 47 to 57 seats, and it is the simplest way we could have made our states move together, which is a limit. Our 3-point national error is an assumption we chose rather than something we measured.
 
 ::: {.write}
 Discussion, connecting to the literature:

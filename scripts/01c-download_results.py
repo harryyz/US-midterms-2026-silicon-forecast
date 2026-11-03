@@ -2,9 +2,9 @@
 # Purpose: Download certified statewide U.S. Senate returns and keep the general-
 #          election Democratic vs Republican contest for each state and cycle, for
 #          checking the regression against real results.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: Internet access. No account needed.
 #

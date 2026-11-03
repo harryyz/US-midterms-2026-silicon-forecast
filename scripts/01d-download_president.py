@@ -2,9 +2,9 @@
 # Purpose: Download certified statewide presidential returns and keep the Democratic
 #          and Republican totals per state and election, for the "last presidential
 #          result" baseline.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: Internet access. No account needed.
 #

@@ -3,9 +3,9 @@
 #          Undecided-or-other) on state demographics and partisanship, test the
 #          fit, and forecast the 2026 Senate races. Three training sets are
 #          compared: 2022 only, 2024 only, and 2022 + 2024.
-# Author: Yi Zhi Zhang
+# Author: Bolong Tang
 # Date: 30 October 2026
-# Contact: yizhiharry.zhang@mail.utoronto.ca
+# Contact: bolong.tang@mail.utoronto.ca
 # License: MIT
 # Pre-requisites: Run 01-download_data.py. Optional inputs that add features and
 #   an independent accuracy check (the script runs without them):
